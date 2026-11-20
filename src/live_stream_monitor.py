@@ -16,7 +16,7 @@ import sys
 import time
 import wave
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -116,64 +116,154 @@ class LiveStreamClipperDaemon:
         res = subprocess.run(cmd, capture_output=True, text=True)
         return res.returncode == 0 and os.path.exists(target_file) and os.path.getsize(target_file) > 1000000
 
-    def generate_unique_english_hook(self, clip_id: int, text_snippet: str) -> List[List[Tuple[str, Optional[Tuple[int, int, int, int]], bool]]]:
+    def generate_unique_english_hook(self, clip_id: int, text_snippet: str) -> Tuple[str, Any, str]:
         """
-        Generates 100% English viral meme hook titles with dynamic keywords and emojis.
-        Strictly English only as requested by user.
+        Generates 100% English viral titles alternating between:
+        1. 'badge': Impact bold condensed yellow gaming banner with emojis (e.g. 🔥 SECRET TREASURE LOOT 💰 🔥)
+        2. 'viral_hook': Arial Bold sentence case with yellow keyword highlights & emojis (e.g. i wonder where they used 2 billion $ and 13 years 😭🥀)
+
+        Guarantees that every clip receives a completely unique title.
         """
         WHITE = (255, 255, 255, 255)
-        YELLOW = (255, 235, 10, 255)
+        YELLOW = (255, 230, 0, 255)
+
+        used_titles = set()
+        for item in self.history:
+            if "title" in item:
+                used_titles.add(item["title"].strip().lower())
 
         text_lower = text_snippet.lower()
 
-        if "trailer" in text_lower or "music" in text_lower:
-            return [
-                [("speed's genuine reaction to", WHITE, False)],
-                [("the GTA 6 soundtrack ", YELLOW, False)],
-                [("he was terrified ", YELLOW, False), ("\U0001F62D\U0001F940", None, True)]
-            ]
-        elif "five" in text_lower or "minute" in text_lower or "time" in text_lower:
-            return [
-                [("speed was not ready for", WHITE, False)],
-                [("the 5 minute timer ", YELLOW, False)],
-                [("wait for the end ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
-            ]
-        elif "gunshot" in text_lower or "crap" in text_lower or "god" in text_lower:
-            return [
-                [("he couldn't believe what", WHITE, False)],
-                [("just happened in GTA 6 ", YELLOW, False)],
-                [("his mic was peaking ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
-            ]
-        elif "bye" in text_lower or "head" in text_lower:
-            return [
-                [("bro really thought he could", WHITE, False)],
-                [("survive the finale ", YELLOW, False)],
-                [("watch till the end ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
-            ]
-        else:
-            english_templates = [
+        # Dynamic title pool covering both Badge Style and Viral Hook Style
+        candidates = []
+
+        # Content-specific candidates based on transcript
+        if any(w in text_lower for w in ["die", "dying", "dead", "kill", "shot", "gun"]):
+            candidates.append((
+                "badge",
+                [("\U0001F525 ", None, True), ("SPEED ALMOST DIED HERE ", YELLOW, False), ("\U0001F480 \U0001F525", None, True)],
+                "\U0001F525 SPEED ALMOST DIED HERE \U0001F480 \U0001F525"
+            ))
+            candidates.append((
+                "viral_hook",
+                [
+                    [("bro really thought he could", WHITE, False)],
+                    [("survive the finale shootout ", YELLOW, False)],
+                    [("nobody saw this coming ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
+                ],
+                "bro really thought he could survive the finale shootout nobody saw this coming \U0001F480\U0001F525"
+            ))
+        if any(w in text_lower for w in ["loot", "money", "treasure", "safe", "room", "box", "cash"]):
+            candidates.append((
+                "badge",
+                [("\U0001F525 ", None, True), ("SECRET TREASURE LOOT ", YELLOW, False), ("\U0001F4B0 \U0001F525", None, True)],
+                "\U0001F525 SECRET TREASURE LOOT \U0001F4B0 \U0001F525"
+            ))
+        if any(w in text_lower for w in ["cop", "police", "arrest", "siren", "chase", "car"]):
+            candidates.append((
+                "badge",
+                [("\U0001F525 ", None, True), ("POLICE CHASE ESCAPE ", YELLOW, False), ("\U0001F6A8 \U0001F525", None, True)],
+                "\U0001F525 POLICE CHASE ESCAPE \U0001F6A8 \U0001F525"
+            ))
+            candidates.append((
+                "viral_hook",
+                [
+                    [("speed's getaway plan", WHITE, False)],
+                    [("completely failed in 5 seconds ", YELLOW, False)],
+                    [("watch the ending ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
+                ],
+                "speed's getaway plan completely failed in 5 seconds watch the ending \U0001F62D\U0001F480"
+            ))
+
+        # Diverse general viral templates
+        general_candidates = [
+            (
+                "badge",
+                [("\U0001F525 ", None, True), ("SECRET TREASURE LOOT ", YELLOW, False), ("\U0001F4B0 \U0001F525", None, True)],
+                "\U0001F525 SECRET TREASURE LOOT \U0001F4B0 \U0001F525"
+            ),
+            (
+                "viral_hook",
                 [
                     [("speed was not ready for", WHITE, False)],
-                    [("this GTA 6 mission ", YELLOW, False)],
-                    [("ending was crazy ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
+                    [("what happened at 90% ", YELLOW, False)],
+                    [("his voice was shaking ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
                 ],
+                "speed was not ready for what happened at 90% his voice was shaking \U0001F62D\U0001F480"
+            ),
+            (
+                "badge",
+                [("\U0001F525 ", None, True), ("HARDEST GTA 6 MISSION ", YELLOW, False), ("\U0001F480 \U0001F525", None, True)],
+                "\U0001F525 HARDEST GTA 6 MISSION \U0001F480 \U0001F525"
+            ),
+            (
+                "viral_hook",
+                [
+                    [("he literally started praying", WHITE, False)],
+                    [("during the last mission ", YELLOW, False)],
+                    [("bro was terrified ", YELLOW, False), ("\U0001F62D\U0001F940", None, True)]
+                ],
+                "he literally started praying during the last mission bro was terrified \U0001F62D\U0001F940"
+            ),
+            (
+                "badge",
+                [("\U0001F525 ", None, True), ("SPEED REACHED THE FINALE ", YELLOW, False), ("\U0001F3AE \U0001F525", None, True)],
+                "\U0001F525 SPEED REACHED THE FINALE \U0001F3AE \U0001F525"
+            ),
+            (
+                "viral_hook",
+                [
+                    [("speed found out the truth", WHITE, False)],
+                    [("about the ending ", YELLOW, False)],
+                    [("look at his face ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
+                ],
+                "speed found out the truth about the ending look at his face \U0001F62D\U0001F480"
+            ),
+            (
+                "badge",
+                [("\U0001F525 ", None, True), ("UNBELIEVABLE TWIST REVEALED ", YELLOW, False), ("\U0001F92F \U0001F525", None, True)],
+                "\U0001F525 UNBELIEVABLE TWIST REVEALED \U0001F92F \U0001F525"
+            ),
+            (
+                "viral_hook",
                 [
                     [("i wonder where they used", WHITE, False)],
                     [("2 billion $ and ", YELLOW, False)],
                     [("13 years ", YELLOW, False), ("\U0001F62D\U0001F940", None, True)]
                 ],
+                "i wonder where they used 2 billion $ and 13 years \U0001F62D\U0001F940"
+            ),
+            (
+                "badge",
+                [("\U0001F525 ", None, True), ("MISSION IMPOSSIBLE MOMENT ", YELLOW, False), ("\U0001F4A5 \U0001F525", None, True)],
+                "\U0001F525 MISSION IMPOSSIBLE MOMENT \U0001F4A5 \U0001F525"
+            ),
+            (
+                "viral_hook",
                 [
-                    [("bro had a heart attack", WHITE, False)],
-                    [("from this GTA 6 action ", YELLOW, False)],
-                    [("nobody expected this ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
+                    [("the entire chat went crazy", WHITE, False)],
+                    [("when this happened in GTA 6 ", YELLOW, False)],
+                    [("nobody believed it ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
                 ],
-                [
-                    [("the loudest scream in", WHITE, False)],
-                    [("GTA 6 finale history ", YELLOW, False)],
-                    [("watch till the end ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
-                ]
-            ]
-            return english_templates[(clip_id - 1) % len(english_templates)]
+                "the entire chat went crazy when this happened in GTA 6 nobody believed it \U0001F480\U0001F525"
+            )
+        ]
+
+        candidates.extend(general_candidates)
+
+        # Find first unused title
+        for style_type, layout, title_str in candidates:
+            if title_str.strip().lower() not in used_titles:
+                return style_type, layout, title_str
+
+        # Fallback with clip ID to guarantee 100% uniqueness
+        unique_suffix = f"part {clip_id}"
+        fallback_title = f"speed's insane reaction to the finale {unique_suffix} \U0001F480\U0001F525"
+        return "viral_hook", [
+            [("speed's insane reaction to", WHITE, False)],
+            [(f"the finale {unique_suffix} ", YELLOW, False)],
+            [("wait till the end ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
+        ], fallback_title
 
     def detect_top_action_windows(self, video_path: str, max_windows: int = 2) -> List[Tuple[float, float, float]]:
         """Detects top non-overlapping action/surprise windows based on audio RMS energy."""
@@ -241,24 +331,27 @@ class LiveStreamClipperDaemon:
 
     def render_viral_hook_banner(
         self,
-        lines: List[List[Tuple[str, Optional[Tuple[int, int, int, int]], bool]]],
+        style_type: str,
+        layout_data: Any,
         output_png_path: str,
         width: int = 1080,
-        height: int = 360,
-        font_size: int = 56
+        height: int = 360
     ) -> str:
-        """Renders authentic viral meme hook text with full-color emojis and bold Arial."""
+        """
+        Renders either:
+        - 'badge': Impact all-caps condensed bright yellow gaming title with flame/emoji accents (Image 1 style)
+        - 'viral_hook': Arial Bold sentence case with yellow keyword highlights & emojis (Image 2 style)
+        """
         img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        font_text = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
-        font_emoji = ImageFont.truetype("C:/Windows/Fonts/seguiemj.ttf", int(font_size * 0.95))
+        if style_type == "badge":
+            # Image 1 style: 🔥 SECRET TREASURE LOOT 💰 🔥
+            font_size = 66
+            font_text = ImageFont.truetype("C:/Windows/Fonts/impact.ttf", font_size)
+            font_emoji = ImageFont.truetype("C:/Windows/Fonts/seguiemj.ttf", int(font_size * 0.9))
 
-        line_spacing = int(font_size * 1.35)
-        total_text_height = len(lines) * line_spacing
-        start_y = (height - total_text_height) // 2
-
-        for line_idx, segments in enumerate(lines):
+            segments = layout_data
             line_w = 0
             for text, color, is_emoji in segments:
                 f = font_emoji if is_emoji else font_text
@@ -266,7 +359,7 @@ class LiveStreamClipperDaemon:
                 line_w += (bbox[2] - bbox[0])
 
             current_x = (width - line_w) // 2
-            current_y = start_y + (line_idx * line_spacing)
+            current_y = (height - font_size) // 2
 
             for text, color, is_emoji in segments:
                 f = font_emoji if is_emoji else font_text
@@ -276,11 +369,46 @@ class LiveStreamClipperDaemon:
                 if is_emoji:
                     draw.text((current_x, current_y), text, font=f, embedded_color=True)
                 else:
-                    for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)]:
-                        draw.text((current_x + dx, current_y + dy), text, font=f, fill=(0, 0, 0, 220))
+                    for dx, dy in [(-3, 0), (3, 0), (0, -3), (0, 3), (-2, -2), (2, 2), (-2, 2), (2, -2)]:
+                        draw.text((current_x + dx, current_y + dy), text, font=f, fill=(0, 0, 0, 240))
                     draw.text((current_x, current_y), text, font=f, fill=color)
 
                 current_x += seg_w
+
+        else:
+            # Image 2 style: i wonder where they used 2 billion $ and 13 years 😭🥀
+            font_size = 56
+            font_text = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
+            font_emoji = ImageFont.truetype("C:/Windows/Fonts/seguiemj.ttf", int(font_size * 0.95))
+
+            lines = layout_data
+            line_spacing = int(font_size * 1.35)
+            total_text_height = len(lines) * line_spacing
+            start_y = (height - total_text_height) // 2
+
+            for line_idx, segments in enumerate(lines):
+                line_w = 0
+                for text, color, is_emoji in segments:
+                    f = font_emoji if is_emoji else font_text
+                    bbox = draw.textbbox((0, 0), text, font=f)
+                    line_w += (bbox[2] - bbox[0])
+
+                current_x = (width - line_w) // 2
+                current_y = start_y + (line_idx * line_spacing)
+
+                for text, color, is_emoji in segments:
+                    f = font_emoji if is_emoji else font_text
+                    bbox = draw.textbbox((0, 0), text, font=f)
+                    seg_w = bbox[2] - bbox[0]
+
+                    if is_emoji:
+                        draw.text((current_x, current_y), text, font=f, embedded_color=True)
+                    else:
+                        for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)]:
+                            draw.text((current_x + dx, current_y + dy), text, font=f, fill=(0, 0, 0, 220))
+                        draw.text((current_x, current_y), text, font=f, fill=color)
+
+                    current_x += seg_w
 
         img.save(output_png_path)
         return output_png_path
@@ -433,9 +561,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             output_mp4 = os.path.join(self.output_dir, clip_filename)
 
             # Generate 100% English unique viral hook banner matching user reference
-            chosen_hook = self.generate_unique_english_hook(clip_id, t_res.full_text)
+            style_type, layout_data, title_text = self.generate_unique_english_hook(clip_id, t_res.full_text)
             banner_png = os.path.join(self.temp_dir, f"hook_{clip_id}.png")
-            self.render_viral_hook_banner(chosen_hook, banner_png)
+            self.render_viral_hook_banner(style_type, layout_data, banner_png)
 
             # Generate ASS dialogue captions (Hinglish/English speech with yellow active highlights)
             ass_path = os.path.join(self.temp_dir, f"captions_{clip_id}.ass")
@@ -450,9 +578,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # Verify QC
             qc_report = self.qc.verify_clip(output_mp4, expected_width=1080, expected_height=1920, min_duration=15.0, max_duration=60.0)
             logger.info(f"Clip {clip_filename} QC: Valid={qc_report.is_valid}, Size={qc_report.file_size_mb}MB, Errors={qc_report.errors}")
-
-            # Reconstruct title text for manifest
-            title_text = " ".join("".join(seg[0] for seg in line) for line in chosen_hook)
 
             record = {
                 "clip_id": clip_id,
