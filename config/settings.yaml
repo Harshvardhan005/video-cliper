@@ -15,6 +15,7 @@ hardware:
 transcription:
   model_size: "base"          # tiny, base, small, medium, large-v3
   language: null              # null for auto-detection
+  caption_script: "hinglish"  # "hinglish", "devanagari", "native", "auto"
   word_timestamps: true
   beam_size: 5
   vad_filter: true

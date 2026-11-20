@@ -12,6 +12,7 @@ from typing import Dict, List, Optional
 
 import yaml
 from src.transcription import WordSegment
+from src.transliteration import to_hinglish, transliterate_word, is_devanagari
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,13 @@ class CaptionGenerator:
         words: List[WordSegment],
         output_ass_path: str,
         style_preset: str = "hormozi",
-        clip_start_time: float = 0.0
+        clip_start_time: float = 0.0,
+        use_hinglish: bool = True
     ) -> str:
         """
         Creates an ASS subtitle file with word-by-word highlight synchronization.
         `clip_start_time` is subtracted from word timestamps to align with clipped video start.
+        If `use_hinglish` is True, Devanagari text is automatically transliterated into readable Hinglish.
         """
         os.makedirs(os.path.dirname(output_ass_path), exist_ok=True)
         preset = self.presets.get(style_preset, self.presets.get("hormozi", {}))
@@ -77,9 +80,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         for w in words:
             rel_start = max(0.0, w.start - clip_start_time)
             rel_end = max(rel_start + 0.1, w.end - clip_start_time)
+            clean_text = w.word.strip()
+            if use_hinglish and is_devanagari(clean_text):
+                clean_text = transliterate_word(clean_text)
+
             relative_words.append(
                 WordSegment(
-                    word=w.word.strip(),
+                    word=clean_text,
                     start=rel_start,
                     end=rel_end,
                     probability=w.probability
