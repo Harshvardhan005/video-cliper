@@ -1,40 +1,59 @@
-# Caption and Video Styling Presets
+# Caption and Video Styling Presets (Aesthetic Modern Typography, Zero Emojis)
 
 presets:
+  aesthetic_cyan:
+    name: "Aesthetic Cyan"
+    description: "Sleek modern typography with electric cyan active tracking and subtle shadow"
+    font_family: "Century Gothic, Bahnschrift, Segoe UI, sans-serif"
+    font_size: 54
+    font_weight: "bold"
+    text_transform: "uppercase"
+    color_primary: "&H00FFFFFF"      # Crisp White (&HAABBGGRR)
+    color_highlight: "&H00FFFF00"    # Electric Cyan
+    color_secondary: "&H00808080"    # Subtle Gray
+    outline_color: "&H000A0A0A"      # Clean Deep Charcoal
+    outline_width: 3
+    shadow_offset: 2
+    shadow_color: "&H60000000"
+    position: "bottom-center"
+    margin_v: 260
+    words_per_line: 3
+    highlight_active_word: true
+
   hormozi:
     name: "Alex Hormozi Style"
     description: "High-energy bold uppercase captions with dynamic color highlights"
-    font_family: "Montserrat, Arial Black, Impact, sans-serif"
-    font_size: 72
+    font_family: "Bahnschrift, Century Gothic, Segoe UI, sans-serif"
+    font_size: 60
     font_weight: "bold"
     text_transform: "uppercase"
     color_primary: "&H00FFFFFF"      # White (ASS format &HAABBGGRR)
-    color_highlight: "&H0000FFFF"    # Bright Yellow
-    color_secondary: "&H0000FF00"    # Green
+    color_highlight: "&H00FFFF00"    # Electric Cyan
+    color_secondary: "&H0030FF80"    # Mint Green
     outline_color: "&H00000000"      # Black
-    outline_width: 5
-    shadow_offset: 3
+    outline_width: 4
+    shadow_offset: 2
     shadow_color: "&H80000000"
     position: "bottom-center"
-    margin_v: 240
+    margin_v: 250
     words_per_line: 3
     highlight_active_word: true
 
   minimal:
     name: "Clean Minimalist"
     description: "Subtle modern typography with clean background pill"
-    font_family: "Helvetica, Arial, sans-serif"
-    font_size: 52
+    font_family: "Century Gothic, Segoe UI, sans-serif"
+    font_size: 50
     font_weight: "normal"
     text_transform: "none"
     color_primary: "&H00FFFFFF"
     color_highlight: "&H00FFFF00"    # Cyan
     outline_color: "&H00000000"
-    outline_width: 3
+    outline_width: 2
     shadow_offset: 1
     position: "bottom-center"
-    margin_v: 200
-    words_per_line: 5
+    margin_v: 220
+    words_per_line: 4
     highlight_active_word: true
 
   podcast:

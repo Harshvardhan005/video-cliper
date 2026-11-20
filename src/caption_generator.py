@@ -44,15 +44,15 @@ class CaptionGenerator:
         os.makedirs(os.path.dirname(output_ass_path), exist_ok=True)
         preset = self.presets.get(style_preset, self.presets.get("hormozi", {}))
 
-        font_name = preset.get("font_family", "Arial Black").split(",")[0].strip()
-        font_size = preset.get("font_size", 64)
-        is_bold = -1 if preset.get("font_weight") == "bold" else 0
+        font_name = preset.get("font_family", "Century Gothic").split(",")[0].strip()
+        font_size = preset.get("font_size", 54)
+        is_bold = -1 if preset.get("font_weight", "bold") == "bold" else 0
         primary_color = preset.get("color_primary", "&H00FFFFFF")
-        highlight_color = preset.get("color_highlight", "&H0000FFFF")
-        outline_color = preset.get("outline_color", "&H00000000")
-        outline_w = preset.get("outline_width", 5)
-        shadow_w = preset.get("shadow_offset", 3)
-        margin_v = preset.get("margin_v", 240)
+        highlight_color = preset.get("color_highlight", "&H00FFFF00")
+        outline_color = preset.get("outline_color", "&H000A0A0A")
+        outline_w = preset.get("outline_width", 3)
+        shadow_w = preset.get("shadow_offset", 2)
+        margin_v = preset.get("margin_v", 260)
         is_uppercase = preset.get("text_transform") == "uppercase"
         words_per_group = preset.get("words_per_line", 3)
 
