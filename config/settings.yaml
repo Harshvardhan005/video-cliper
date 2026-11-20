@@ -1,0 +1,56 @@
+# AI Video Clipper System Settings
+
+app:
+  name: "AI Autonomous Video Clipper"
+  version: "1.0.0"
+  env: "development"
+
+hardware:
+  device: "auto"              # "auto", "cuda", "cpu"
+  fallback_to_cpu: true
+  cuda_compute_type: "float16" # "float16", "int8", "float32"
+  cpu_compute_type: "int8"
+  threads: 4
+
+transcription:
+  model_size: "base"          # tiny, base, small, medium, large-v3
+  language: null              # null for auto-detection
+  word_timestamps: true
+  beam_size: 5
+  vad_filter: true
+
+moment_detection:
+  weights:
+    hook_strength: 0.25
+    emotional_engagement: 0.20
+    information_value: 0.20
+    narrative_completeness: 0.15
+    visual_engagement: 0.10
+    audio_quality: 0.10
+  min_retention_score: 55.0
+  max_clips: 8
+  default_clip_duration_target: 35.0  # seconds
+
+video_processing:
+  target_width: 1080
+  target_height: 1920
+  aspect_ratio: "9:16"
+  fps: 30
+  video_codec: "libx264"
+  crf: 19
+  preset: "medium"
+  audio_codec: "aac"
+  audio_bitrate: "192k"
+  audio_sample_rate: 48000
+  pixel_format: "yuv420p"
+
+directories:
+  input: "input"
+  output: "output"
+  clips: "output/clips"
+  thumbnails: "output/thumbnails"
+  captions: "output/captions"
+  metadata: "output/metadata"
+  temp: "temp"
+  logs: "logs"
+

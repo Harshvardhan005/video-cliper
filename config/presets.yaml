@@ -1,0 +1,90 @@
+# Caption and Video Styling Presets
+
+presets:
+  hormozi:
+    name: "Alex Hormozi Style"
+    description: "High-energy bold uppercase captions with dynamic color highlights"
+    font_family: "Montserrat, Arial Black, Impact, sans-serif"
+    font_size: 72
+    font_weight: "bold"
+    text_transform: "uppercase"
+    color_primary: "&H00FFFFFF"      # White (ASS format &HAABBGGRR)
+    color_highlight: "&H0000FFFF"    # Bright Yellow
+    color_secondary: "&H0000FF00"    # Green
+    outline_color: "&H00000000"      # Black
+    outline_width: 5
+    shadow_offset: 3
+    shadow_color: "&H80000000"
+    position: "bottom-center"
+    margin_v: 240
+    words_per_line: 3
+    highlight_active_word: true
+
+  minimal:
+    name: "Clean Minimalist"
+    description: "Subtle modern typography with clean background pill"
+    font_family: "Helvetica, Arial, sans-serif"
+    font_size: 52
+    font_weight: "normal"
+    text_transform: "none"
+    color_primary: "&H00FFFFFF"
+    color_highlight: "&H00FFFF00"    # Cyan
+    outline_color: "&H00000000"
+    outline_width: 3
+    shadow_offset: 1
+    position: "bottom-center"
+    margin_v: 200
+    words_per_line: 5
+    highlight_active_word: true
+
+  podcast:
+    name: "Podcast / Interview"
+    description: "Balanced readability designed for dialog and discussions"
+    font_family: "Roboto, Arial, sans-serif"
+    font_size: 56
+    font_weight: "bold"
+    text_transform: "none"
+    color_primary: "&H00F0F0F0"
+    color_highlight: "&H0033CCFF"    # Orange-gold
+    outline_color: "&H00000000"
+    outline_width: 4
+    shadow_offset: 2
+    position: "bottom-center"
+    margin_v: 220
+    words_per_line: 4
+    highlight_active_word: true
+
+  gaming:
+    name: "Gaming High-Octane"
+    description: "Neon highlights with punchy animations for gaming clips"
+    font_family: "Impact, Trebuchet MS, sans-serif"
+    font_size: 68
+    font_weight: "bold"
+    text_transform: "uppercase"
+    color_primary: "&H00FFFFFF"
+    color_highlight: "&H00FF00FF"    # Magenta / Neon Purple
+    outline_color: "&H00000000"
+    outline_width: 6
+    shadow_offset: 4
+    position: "bottom-center"
+    margin_v: 260
+    words_per_line: 3
+    highlight_active_word: true
+
+  cinematic:
+    name: "Cinematic Letterbox"
+    description: "Understated serif / clean sans captioning with elegant pacing"
+    font_family: "Georgia, Times New Roman, serif"
+    font_size: 48
+    font_weight: "normal"
+    text_transform: "none"
+    color_primary: "&H00FFFFFF"
+    color_highlight: "&H00E0E0E0"
+    outline_color: "&H00000000"
+    outline_width: 2
+    shadow_offset: 1
+    position: "bottom-center"
+    margin_v: 180
+    words_per_line: 6
+    highlight_active_word: false
+

@@ -1,0 +1,30 @@
+# Core Video & Audio Processing
+ffmpeg-python>=0.2.0
+yt-dlp>=2024.0.0
+opencv-python>=4.8.0
+scenedetect[opencv]>=0.6.0
+Pillow>=10.0.0
+librosa>=0.10.0
+soundfile>=0.12.0
+scipy>=1.11.0
+
+# AI & Machine Learning
+torch>=2.1.0
+torchaudio>=2.1.0
+faster-whisper>=1.0.0
+numpy>=1.24.0
+
+# Web Dashboard & API
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+python-multipart>=0.0.9
+pydantic>=2.6.0
+jinja2>=3.1.0
+
+# Utilities
+pyyaml>=6.0.1
+rich>=13.7.0
+tqdm>=4.66.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
