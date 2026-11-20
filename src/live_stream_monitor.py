@@ -116,17 +116,15 @@ class LiveStreamClipperDaemon:
         res = subprocess.run(cmd, capture_output=True, text=True)
         return res.returncode == 0 and os.path.exists(target_file) and os.path.getsize(target_file) > 1000000
 
-    def generate_unique_english_hook(self, clip_id: int, text_snippet: str) -> Tuple[List[List[Tuple[str, Optional[Tuple[int, int, int, int]], bool]]], str]:
+    def generate_screenshot_inspired_hook(self, clip_id: int, text_snippet: str) -> Tuple[str, List[str], str]:
         """
-        Generates 100% English viral meme hook titles strictly following the user's aesthetic reference:
-        - Sentence-case / lowercase typography
-        - Bold Arial text in white with punchline/keywords highlighted in vibrant yellow
-        - High-engagement expressive emojis at the end (e.g. 😭🥀, 💀🔥, 😭💀)
-        - NO all-caps, NO condensed flame badges, NO tacky banners.
+        Generates viral titles inspired directly by the user's uploaded screenshots:
+        Style Types:
+        1. 'tiktok_bubble' (Screenshots 3 & 6): White rounded card pill with dark text
+        2. 'heavy_stroke'  (Screenshots 1, 5, 7): Heavy bold white text with thick black border
+        3. 'condensed_pov' (Screenshot 4): Condensed white font 'Pov: ...' with black stroke
+        4. 'minimal_white' (Screenshots 2 & 8): Clean modern white text, sentence or uppercase
         """
-        WHITE = (255, 255, 255, 255)
-        YELLOW = (255, 230, 0, 255)
-
         used_titles = set()
         for item in self.history:
             if "title" in item:
@@ -135,169 +133,230 @@ class LiveStreamClipperDaemon:
         text_lower = text_snippet.lower()
         candidates = []
 
-        # Content-specific aesthetic viral hooks
-        if any(w in text_lower for w in ["die", "dying", "dead", "kill", "shot", "gun", "wall", "alive"]):
+        # Content-specific hooks based on transcript
+        if any(w in text_lower for w in ["npc", "car", "drive", "ride", "bentley", "bike", "street"]):
             candidates.append((
-                [
-                    [("bro really thought he could", WHITE, False)],
-                    [("survive the finale shootout ", YELLOW, False)],
-                    [("nobody saw this coming ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
-                ],
-                "bro really thought he could survive the finale shootout nobody saw this coming \U0001F480\U0001F525"
+                "tiktok_bubble",
+                ["The NPCs are crazy", "in GTA 6 \U0001F62D"],
+                "The NPCs are crazy in GTA 6 \U0001F62D"
             ))
             candidates.append((
-                [
-                    [("speed genuinely thought", WHITE, False)],
-                    [("this was the end of the line ", YELLOW, False)],
-                    [("look at his face ", YELLOW, False), ("\U0001F62D\U0001F940", None, True)]
-                ],
-                "speed genuinely thought this was the end of the line look at his face \U0001F62D\U0001F940"
-            ))
-
-        if any(w in text_lower for w in ["baby", "behind", "follow", "water", "escape", "run"]):
-            candidates.append((
-                [
-                    [("speed's escape plan", WHITE, False)],
-                    [("failed in literally 5 seconds ", YELLOW, False)],
-                    [("watch till the end ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
-                ],
-                "speed's escape plan failed in literally 5 seconds watch till the end \U0001F62D\U0001F480"
+                "heavy_stroke",
+                ["FIRST VEHICLE I FOUND", "IN GTA 6"],
+                "FIRST VEHICLE I FOUND IN GTA 6"
             ))
             candidates.append((
-                [
-                    [("bro was following the wrong way", WHITE, False)],
-                    [("in the final mission ", YELLOW, False)],
-                    [("he was so confused ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
-                ],
-                "bro was following the wrong way in the final mission he was so confused \U0001F480\U0001F525"
+                "tiktok_bubble",
+                ["NPC was NOT giving up", "their ride in GTA 6 \U0001F62D"],
+                "NPC was NOT giving up their ride in GTA 6 \U0001F62D"
             ))
 
-        # Diverse aesthetic template pool matching user's reference
-        general_aesthetic_hooks = [
+        if any(w in text_lower for w in ["weapon", "gun", "shoot", "kill", "alligator", "chameleon"]):
+            candidates.append((
+                "heavy_stroke",
+                ["BRO USED A CHAMELEON", "AS A WEAPON \U0001F480"],
+                "BRO USED A CHAMELEON AS A WEAPON \U0001F480"
+            ))
+            candidates.append((
+                "heavy_stroke",
+                ["LUCIA'S MOM GOT BIT", "BY AN ALLIGATOR"],
+                "LUCIA'S MOM GOT BIT BY AN ALLIGATOR"
+            ))
+
+        if any(w in text_lower for w in ["baby", "lucia", "kid", "born", "family"]):
+            candidates.append((
+                "minimal_white",
+                ["GTA VI LUCIA'S BABY \U0001F633\U0001F62D"],
+                "GTA VI LUCIA'S BABY \U0001F633\U0001F62D"
+            ))
+
+        # Diverse general presets from user's screenshots
+        general_presets = [
             (
-                [
-                    [("i wonder where they used", WHITE, False)],
-                    [("2 billion $ and ", YELLOW, False)],
-                    [("13 years ", YELLOW, False), ("\U0001F62D\U0001F940", None, True)]
-                ],
-                "i wonder where they used 2 billion $ and 13 years \U0001F62D\U0001F940"
+                "tiktok_bubble",
+                ["The NPCs are crazy", "in GTA 6 \U0001F62D"],
+                "The NPCs are crazy in GTA 6 \U0001F62D"
             ),
             (
-                [
-                    [("speed was not ready for", WHITE, False)],
-                    [("what happened at 90% ", YELLOW, False)],
-                    [("his voice was shaking ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
-                ],
-                "speed was not ready for what happened at 90% his voice was shaking \U0001F62D\U0001F480"
+                "heavy_stroke",
+                ["BRO USED A CHAMELEON", "AS A WEAPON \U0001F480"],
+                "BRO USED A CHAMELEON AS A WEAPON \U0001F480"
             ),
             (
-                [
-                    [("bro had a panic attack", WHITE, False)],
-                    [("from this unexpected twist ", YELLOW, False)],
-                    [("nobody warned him ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
-                ],
-                "bro had a panic attack from this unexpected twist nobody warned him \U0001F480\U0001F525"
+                "condensed_pov",
+                ["Pov: Bro After 22 Hours Non-Stop."],
+                "Pov: Bro After 22 Hours Non-Stop."
             ),
             (
-                [
-                    [("speed found out the truth", WHITE, False)],
-                    [("about the last mission ", YELLOW, False)],
-                    [("he started praying ", YELLOW, False), ("\U0001F62D\U0001F940", None, True)]
-                ],
-                "speed found out the truth about the last mission he started praying \U0001F62D\U0001F940"
+                "minimal_white",
+                ["13 years Feel worth it"],
+                "13 years Feel worth it"
             ),
             (
-                [
-                    [("the entire chat went crazy", WHITE, False)],
-                    [("when this happened in GTA 6 ", YELLOW, False)],
-                    [("nobody believed it ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
-                ],
-                "the entire chat went crazy when this happened in GTA 6 nobody believed it \U0001F480\U0001F525"
+                "heavy_stroke",
+                ["First Bike I found", "In GTA 6"],
+                "First Bike I found In GTA 6"
             ),
             (
-                [
-                    [("this is why GTA 6 took", WHITE, False)],
-                    [("over a decade to release ", YELLOW, False)],
-                    [("ending was insane ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
-                ],
-                "this is why GTA 6 took over a decade to release ending was insane \U0001F62D\U0001F480"
+                "tiktok_bubble",
+                ["NPC was NOT giving up that", "Bentley in GTA 6 \U0001F62D"],
+                "NPC was NOT giving up that Bentley in GTA 6 \U0001F62D"
             ),
             (
-                [
-                    [("he thought the mission was done", WHITE, False)],
-                    [("until this suddenly happened ", YELLOW, False)],
-                    [("bro was terrified ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
-                ],
-                "he thought the mission was done until this suddenly happened bro was terrified \U0001F480\U0001F525"
+                "minimal_white",
+                ["GTA VI LUCIA'S BABY \U0001F633\U0001F62D"],
+                "GTA VI LUCIA'S BABY \U0001F633\U0001F62D"
+            ),
+            (
+                "condensed_pov",
+                ["Pov: Speed In The Final Mission."],
+                "Pov: Speed In The Final Mission."
+            ),
+            (
+                "heavy_stroke",
+                ["LUCIA'S MOM GOT BIT", "BY AN ALLIGATOR"],
+                "LUCIA'S MOM GOT BIT BY AN ALLIGATOR"
             )
         ]
 
-        candidates.extend(general_aesthetic_hooks)
+        candidates.extend(general_presets)
 
-        for layout, title_str in candidates:
+        for style_type, lines, title_str in candidates:
             if title_str.strip().lower() not in used_titles:
-                return layout, title_str
+                return style_type, lines, title_str
 
-        # Fallback ensuring uniqueness
+        # Fallback with clip ID
         suffix = f"part {clip_id}"
-        return [
-            [("speed's genuine reaction to", WHITE, False)],
-            [(f"the GTA 6 finale {suffix} ", YELLOW, False)],
-            [("watch till the end ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
-        ], f"speed's genuine reaction to the GTA 6 finale {suffix} watch till the end \U0001F480\U0001F525"
+        return "tiktok_bubble", [f"Speed in GTA 6 {suffix}", "watch till the end \U0001F62D"], f"Speed in GTA 6 {suffix} watch till the end \U0001F62D"
 
-    def render_viral_hook_banner(
+    def render_screenshot_style_banner(
         self,
-        lines: List[List[Tuple[str, Optional[Tuple[int, int, int, int]], bool]]],
+        style_type: str,
+        lines: List[str],
         output_png_path: str,
         width: int = 1080,
-        height: int = 360,
-        font_size: int = 56
+        height: int = 360
     ) -> str:
         """
-        Renders aesthetic viral meme hook text matching the user's reference:
-        - Bold Arial typography in sentence-case
-        - White text with punchline keywords highlighted in bright yellow
-        - High-quality full-color vector emojis at the end
+        Renders titles exactly matching the user's reference screenshots:
+        1. 'tiktok_bubble': White rounded rectangle card with dark text (Screenshots 3 & 6)
+        2. 'heavy_stroke': Heavy white bold font with 6px thick solid black outline (Screenshots 1, 5, 7)
+        3. 'condensed_pov': Condensed white font with thin black stroke (Screenshot 4)
+        4. 'minimal_white': Crisp white modern bold font (Screenshots 2 & 8)
         """
         img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        font_text = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
-        font_emoji = ImageFont.truetype("C:/Windows/Fonts/seguiemj.ttf", int(font_size * 0.95))
+        if style_type == "tiktok_bubble":
+            # Screenshots 3 & 6: Clean white rounded sticker card with dark text
+            font_size = 46
+            font_text = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
 
-        line_spacing = int(font_size * 1.35)
-        total_text_height = len(lines) * line_spacing
-        start_y = (height - total_text_height) // 2
+            line_spacing = 58
+            total_text_h = len(lines) * line_spacing
 
-        for line_idx, segments in enumerate(lines):
-            line_w = 0
-            for text, color, is_emoji in segments:
-                f = font_emoji if is_emoji else font_text
-                bbox = draw.textbbox((0, 0), text, font=f)
-                line_w += (bbox[2] - bbox[0])
+            # Measure max line width
+            max_line_w = 0
+            for l in lines:
+                bbox = draw.textbbox((0, 0), l, font=font_text)
+                lw = bbox[2] - bbox[0]
+                if lw > max_line_w:
+                    max_line_w = lw
 
-            current_x = (width - line_w) // 2
-            current_y = start_y + (line_idx * line_spacing)
+            pad_x = 42
+            pad_y = 28
+            pill_w = max_line_w + (pad_x * 2)
+            pill_h = total_text_h + (pad_y * 2) - 10
 
-            for text, color, is_emoji in segments:
-                f = font_emoji if is_emoji else font_text
-                bbox = draw.textbbox((0, 0), text, font=f)
-                seg_w = bbox[2] - bbox[0]
+            pill_x = (width - pill_w) // 2
+            pill_y = (height - pill_h) // 2
 
-                if is_emoji:
-                    draw.text((current_x, current_y), text, font=f, embedded_color=True)
-                else:
-                    for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)]:
-                        draw.text((current_x + dx, current_y + dy), text, font=f, fill=(0, 0, 0, 220))
-                    draw.text((current_x, current_y), text, font=f, fill=color)
+            # Render rounded pill background
+            draw.rounded_rectangle(
+                [pill_x, pill_y, pill_x + pill_w, pill_y + pill_h],
+                radius=24,
+                fill=(255, 255, 255, 250),
+                outline=(0, 0, 0, 35),
+                width=2
+            )
 
-                current_x += seg_w
+            # Render text inside pill
+            for idx, l in enumerate(lines):
+                bbox = draw.textbbox((0, 0), l, font=font_text)
+                lw = bbox[2] - bbox[0]
+                tx = (width - lw) // 2
+                ty = pill_y + pad_y + (idx * line_spacing)
+                draw.text((tx, ty), l, font=font_text, fill=(12, 12, 12, 255), embedded_color=True)
+
+        elif style_type == "heavy_stroke":
+            # Screenshots 1, 5, 7: Heavy white text with thick 6px black outline
+            font_size = 62
+            font_heavy = ImageFont.truetype("C:/Windows/Fonts/seguibl.ttf", font_size)
+
+            line_spacing = 76
+            total_text_h = len(lines) * line_spacing
+            start_y = (height - total_text_h) // 2
+
+            stroke_w = 6
+            for idx, l in enumerate(lines):
+                bbox = draw.textbbox((0, 0), l, font=font_heavy)
+                lw = bbox[2] - bbox[0]
+                tx = (width - lw) // 2
+                ty = start_y + (idx * line_spacing)
+
+                # Draw outer black stroke
+                for dx in range(-stroke_w, stroke_w + 1):
+                    for dy in range(-stroke_w, stroke_w + 1):
+                        if dx * dx + dy * dy <= stroke_w * stroke_w:
+                            draw.text((tx + dx, ty + dy), l, font=font_heavy, fill=(0, 0, 0, 255))
+
+                # Draw crisp white fill
+                draw.text((tx, ty), l, font=font_heavy, fill=(255, 255, 255, 255), embedded_color=True)
+
+        elif style_type == "condensed_pov":
+            # Screenshot 4: Condensed white font with black outline
+            font_size = 56
+            font_cond = ImageFont.truetype("C:/Windows/Fonts/impact.ttf", font_size)
+
+            line_spacing = 68
+            total_text_h = len(lines) * line_spacing
+            start_y = (height - total_text_h) // 2
+
+            stroke_w = 4
+            for idx, l in enumerate(lines):
+                bbox = draw.textbbox((0, 0), l, font=font_cond)
+                lw = bbox[2] - bbox[0]
+                tx = (width - lw) // 2
+                ty = start_y + (idx * line_spacing)
+
+                for dx in range(-stroke_w, stroke_w + 1):
+                    for dy in range(-stroke_w, stroke_w + 1):
+                        if dx * dx + dy * dy <= stroke_w * stroke_w:
+                            draw.text((tx + dx, ty + dy), l, font=font_cond, fill=(0, 0, 0, 255))
+
+                draw.text((tx, ty), l, font=font_cond, fill=(255, 255, 255, 255), embedded_color=True)
+
+        else:
+            # Screenshots 2 & 8: Minimalist white bold text with clean shadow
+            font_size = 54
+            font_clean = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
+
+            line_spacing = 66
+            total_text_h = len(lines) * line_spacing
+            start_y = (height - total_text_h) // 2
+
+            for idx, l in enumerate(lines):
+                bbox = draw.textbbox((0, 0), l, font=font_clean)
+                lw = bbox[2] - bbox[0]
+                tx = (width - lw) // 2
+                ty = start_y + (idx * line_spacing)
+
+                for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)]:
+                    draw.text((tx + dx, ty + dy), l, font=font_clean, fill=(0, 0, 0, 220))
+                draw.text((tx, ty), l, font=font_clean, fill=(255, 255, 255, 255), embedded_color=True)
 
         img.save(output_png_path)
         return output_png_path
-
-        img.save(output_png_path)
         return output_png_path
 
     def generate_dialogue_ass(self, words: List[Dict], ass_path: str) -> str:
@@ -447,10 +506,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             clip_filename = f"speed_action_clip_{clip_id}_{timestamp_str}.mp4"
             output_mp4 = os.path.join(self.output_dir, clip_filename)
 
-            # Generate 100% English unique viral hook banner matching user reference
-            layout_data, title_text = self.generate_unique_english_hook(clip_id, t_res.full_text)
+            # Generate 100% English unique viral hook banner matching user reference screenshots
+            style_type, lines, title_text = self.generate_screenshot_inspired_hook(clip_id, t_res.full_text)
             banner_png = os.path.join(self.temp_dir, f"hook_{clip_id}.png")
-            self.render_viral_hook_banner(layout_data, banner_png)
+            self.render_screenshot_style_banner(style_type, lines, banner_png)
 
             # Generate ASS dialogue captions (Hinglish/English speech with yellow active highlights)
             ass_path = os.path.join(self.temp_dir, f"captions_{clip_id}.ass")
