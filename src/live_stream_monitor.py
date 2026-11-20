@@ -116,8 +116,67 @@ class LiveStreamClipperDaemon:
         res = subprocess.run(cmd, capture_output=True, text=True)
         return res.returncode == 0 and os.path.exists(target_file) and os.path.getsize(target_file) > 1000000
 
-    def detect_peak_action(self, video_path: str) -> Tuple[float, float, float]:
-        """Detects the highest-energy action/surprise segment via audio RMS."""
+    def generate_unique_english_hook(self, clip_id: int, text_snippet: str) -> List[List[Tuple[str, Optional[Tuple[int, int, int, int]], bool]]]:
+        """
+        Generates 100% English viral meme hook titles with dynamic keywords and emojis.
+        Strictly English only as requested by user.
+        """
+        WHITE = (255, 255, 255, 255)
+        YELLOW = (255, 235, 10, 255)
+
+        text_lower = text_snippet.lower()
+
+        if "trailer" in text_lower or "music" in text_lower:
+            return [
+                [("speed's genuine reaction to", WHITE, False)],
+                [("the GTA 6 soundtrack ", YELLOW, False)],
+                [("he was terrified ", YELLOW, False), ("\U0001F62D\U0001F940", None, True)]
+            ]
+        elif "five" in text_lower or "minute" in text_lower or "time" in text_lower:
+            return [
+                [("speed was not ready for", WHITE, False)],
+                [("the 5 minute timer ", YELLOW, False)],
+                [("wait for the end ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
+            ]
+        elif "gunshot" in text_lower or "crap" in text_lower or "god" in text_lower:
+            return [
+                [("he couldn't believe what", WHITE, False)],
+                [("just happened in GTA 6 ", YELLOW, False)],
+                [("his mic was peaking ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
+            ]
+        elif "bye" in text_lower or "head" in text_lower:
+            return [
+                [("bro really thought he could", WHITE, False)],
+                [("survive the finale ", YELLOW, False)],
+                [("watch till the end ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
+            ]
+        else:
+            english_templates = [
+                [
+                    [("speed was not ready for", WHITE, False)],
+                    [("this GTA 6 mission ", YELLOW, False)],
+                    [("ending was crazy ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
+                ],
+                [
+                    [("i wonder where they used", WHITE, False)],
+                    [("2 billion $ and ", YELLOW, False)],
+                    [("13 years ", YELLOW, False), ("\U0001F62D\U0001F940", None, True)]
+                ],
+                [
+                    [("bro had a heart attack", WHITE, False)],
+                    [("from this GTA 6 action ", YELLOW, False)],
+                    [("nobody expected this ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
+                ],
+                [
+                    [("the loudest scream in", WHITE, False)],
+                    [("GTA 6 finale history ", YELLOW, False)],
+                    [("watch till the end ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
+                ]
+            ]
+            return english_templates[(clip_id - 1) % len(english_templates)]
+
+    def detect_top_action_windows(self, video_path: str, max_windows: int = 2) -> List[Tuple[float, float, float]]:
+        """Detects top non-overlapping action/surprise windows based on audio RMS energy."""
         wav_path = os.path.join(self.temp_dir, "temp_live_audio.wav")
         subprocess.run([
             FFMPEG, "-y",
@@ -145,28 +204,40 @@ class LiveStreamClipperDaemon:
             rms_scores.append((sec, rms))
 
         if not rms_scores:
-            return 0.0, min(self.clip_target_duration_sec, duration), 0.0
+            return [(0.0, min(self.clip_target_duration_sec, duration), 0.0)]
 
         window_chunks = int(self.clip_target_duration_sec / 0.5)
-        best_sum = -1.0
-        best_start_idx = 0
+        all_candidates = []
 
         for i in range(len(rms_scores) - window_chunks + 1):
             win_sum = sum(rms_scores[j][1] for j in range(i, i + window_chunks))
-            if win_sum > best_sum:
-                best_sum = win_sum
-                best_start_idx = i
+            start_sec = rms_scores[i][0]
+            end_sec = min(duration, start_sec + self.clip_target_duration_sec)
+            peak_sec = max(rms_scores[i : i + window_chunks], key=lambda x: x[1])[0]
+            all_candidates.append((win_sum, start_sec, end_sec, peak_sec))
 
-        start_sec = rms_scores[best_start_idx][0]
-        end_sec = min(duration, start_sec + self.clip_target_duration_sec)
-        peak_sec = max(rms_scores[best_start_idx : best_start_idx + window_chunks], key=lambda x: x[1])[0]
+        # Sort by energy descending
+        all_candidates.sort(key=lambda x: x[0], reverse=True)
+
+        selected_windows = []
+        for cand in all_candidates:
+            c_start = cand[1]
+            c_end = cand[2]
+            c_peak = cand[3]
+
+            # Ensure at least 15s separation from previously selected windows
+            overlap = any(abs(c_start - sw[0]) < 20.0 for sw in selected_windows)
+            if not overlap:
+                selected_windows.append((c_start, c_end, c_peak))
+                if len(selected_windows) >= max_windows:
+                    break
 
         try:
             os.remove(wav_path)
         except Exception:
             pass
 
-        return start_sec, end_sec, peak_sec
+        return selected_windows
 
     def render_viral_hook_banner(
         self,
@@ -320,125 +391,116 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 return False
         return True
 
-    def process_one_cycle(self) -> Optional[str]:
-        """Runs one full detection and clipping cycle from the live stream."""
+    def process_one_cycle(self) -> List[str]:
+        """Runs a full detection and clipping cycle, generating distinct clips with unique English titles."""
         v_url, a_url = self.get_hls_stream_urls()
         if not v_url or not a_url:
             logger.warning("Could not reach livestream HLS feed. Retrying next cycle...")
-            return None
+            return []
 
         raw_buffer = os.path.join(self.temp_dir, "current_live_buffer.mp4")
         if not self.capture_rolling_buffer(v_url, a_url, raw_buffer):
             logger.warning("Failed to capture rolling buffer.")
-            return None
+            return []
 
-        start_sec, end_sec, peak_sec = self.detect_peak_action(raw_buffer)
-        duration = end_sec - start_sec
-        logger.info(f"Action segment identified: {start_sec:.1f}s - {end_sec:.1f}s (peak at {peak_sec:.1f}s)")
+        action_windows = self.detect_top_action_windows(raw_buffer, max_windows=2)
+        generated_clips = []
 
-        # Extract audio for speech recognition
-        clip_audio_wav = os.path.join(self.temp_dir, "current_action_audio.wav")
-        subprocess.run([
-            FFMPEG, "-y",
-            "-ss", str(start_sec),
-            "-t", str(duration),
-            "-i", raw_buffer,
-            "-ar", "16000", "-ac", "1",
-            clip_audio_wav
-        ], capture_output=True)
+        for window_idx, (start_sec, end_sec, peak_sec) in enumerate(action_windows):
+            duration = end_sec - start_sec
+            logger.info(f"Processing Action Window {window_idx+1}: {start_sec:.1f}s - {end_sec:.1f}s (peak at {peak_sec:.1f}s)")
 
-        # Transcribe
-        t_res = self.transcriber.transcribe(clip_audio_wav, language="en")
-        words = [{"word": w.word, "start": w.start, "end": w.end} for seg in t_res.segments for w in (seg.words or [])]
-        logger.info(f"Transcribed {len(words)} words: '{t_res.full_text[:80]}...'")
+            # Extract audio for speech recognition
+            clip_audio_wav = os.path.join(self.temp_dir, f"current_action_audio_{window_idx}.wav")
+            subprocess.run([
+                FFMPEG, "-y",
+                "-ss", str(start_sec),
+                "-t", str(duration),
+                "-i", raw_buffer,
+                "-ar", "16000", "-ac", "1",
+                clip_audio_wav
+            ], capture_output=True)
 
-        # Generate unique clip filename
-        clip_id = len(self.history) + 1
-        timestamp_str = datetime.now().strftime("%H%M%S")
-        clip_filename = f"speed_action_clip_{clip_id}_{timestamp_str}.mp4"
-        output_mp4 = os.path.join(self.output_dir, clip_filename)
+            # Transcribe
+            t_res = self.transcriber.transcribe(clip_audio_wav, language="en")
+            words = [{"word": w.word, "start": w.start, "end": w.end} for seg in t_res.segments for w in (seg.words or [])]
+            logger.info(f"Transcribed {len(words)} words: '{t_res.full_text[:80]}...'")
 
-        # Prepare Hook Banner with authentic reference styling
-        WHITE = (255, 255, 255, 255)
-        YELLOW = (255, 235, 10, 255)
+            # Generate unique clip filename
+            clip_id = len(self.history) + 1
+            timestamp_str = datetime.now().strftime("%H%M%S")
+            clip_filename = f"speed_action_clip_{clip_id}_{timestamp_str}.mp4"
+            output_mp4 = os.path.join(self.output_dir, clip_filename)
 
-        hook_variants = [
-            [
-                [("speed was not ready for", WHITE, False)],
-                [("this GTA 6 mission ", YELLOW, False)],
-                [("bhai reaction dekho ", YELLOW, False), ("\U0001F62D\U0001F480", None, True)]
-            ],
-            [
-                [("bro really thought he could", WHITE, False)],
-                [("survive GTA 6 finale ", YELLOW, False)],
-                [("ending unexpected tha ", YELLOW, False), ("\U0001F62D\U0001F940", None, True)]
-            ],
-            [
-                [("speed reacted to", WHITE, False)],
-                [("GTA 6 biggest plot twist ", YELLOW, False)],
-                [("bhai pagal ho gaya ", YELLOW, False), ("\U0001F480\U0001F525", None, True)]
-            ]
-        ]
-        chosen_hook = hook_variants[(clip_id - 1) % len(hook_variants)]
-        banner_png = os.path.join(self.temp_dir, f"hook_{clip_id}.png")
-        self.render_viral_hook_banner(chosen_hook, banner_png)
+            # Generate 100% English unique viral hook banner matching user reference
+            chosen_hook = self.generate_unique_english_hook(clip_id, t_res.full_text)
+            banner_png = os.path.join(self.temp_dir, f"hook_{clip_id}.png")
+            self.render_viral_hook_banner(chosen_hook, banner_png)
 
-        # Generate ASS dialogue captions
-        ass_path = os.path.join(self.temp_dir, f"captions_{clip_id}.ass")
-        self.generate_dialogue_ass(words, ass_path)
+            # Generate ASS dialogue captions (Hinglish/English speech with yellow active highlights)
+            ass_path = os.path.join(self.temp_dir, f"captions_{clip_id}.ass")
+            self.generate_dialogue_ass(words, ass_path)
 
-        # Render Vertical Clip
-        success = self.render_vertical_clip(raw_buffer, start_sec, duration, banner_png, ass_path, output_mp4)
-        if not success:
-            logger.error("Failed to render clip.")
-            return None
+            # Render Vertical Clip
+            success = self.render_vertical_clip(raw_buffer, start_sec, duration, banner_png, ass_path, output_mp4)
+            if not success:
+                logger.error(f"Failed to render clip {clip_filename}.")
+                continue
 
-        # Verify QC
-        qc_report = self.qc.verify_clip(output_mp4, expected_width=1080, expected_height=1920, min_duration=15.0, max_duration=60.0)
-        logger.info(f"Clip {clip_filename} QC: Valid={qc_report.is_valid}, Size={qc_report.file_size_mb}MB, Errors={qc_report.errors}")
+            # Verify QC
+            qc_report = self.qc.verify_clip(output_mp4, expected_width=1080, expected_height=1920, min_duration=15.0, max_duration=60.0)
+            logger.info(f"Clip {clip_filename} QC: Valid={qc_report.is_valid}, Size={qc_report.file_size_mb}MB, Errors={qc_report.errors}")
 
-        # Update History & Manifest
-        record = {
-            "clip_id": clip_id,
-            "filename": clip_filename,
-            "created_at": datetime.now().isoformat(),
-            "duration": qc_report.duration_actual,
-            "file_size_mb": qc_report.file_size_mb,
-            "transcription_snippet": t_res.full_text[:120],
-            "stream_url": self.stream_url,
-            "qc_valid": qc_report.is_valid
-        }
-        self.history.append(record)
-        self._save_history()
+            # Reconstruct title text for manifest
+            title_text = " ".join("".join(seg[0] for seg in line) for line in chosen_hook)
 
-        manifest_file = os.path.join(self.output_dir, "live_stream_clips_manifest.json")
-        with open(manifest_file, "w", encoding="utf-8") as f:
-            json.dump(self.history, f, indent=2)
+            record = {
+                "clip_id": clip_id,
+                "filename": clip_filename,
+                "title": title_text,
+                "created_at": datetime.now().isoformat(),
+                "duration": qc_report.duration_actual,
+                "file_size_mb": qc_report.file_size_mb,
+                "transcription_snippet": t_res.full_text[:120],
+                "stream_url": self.stream_url,
+                "qc_valid": qc_report.is_valid
+            }
+            self.history.append(record)
+            self._save_history()
 
-        # Clean intermediate scratch buffers
-        for f in [raw_buffer, clip_audio_wav, banner_png, ass_path]:
-            try:
-                if os.path.exists(f):
-                    os.remove(f)
-            except Exception:
-                pass
+            manifest_file = os.path.join(self.output_dir, "live_stream_clips_manifest.json")
+            with open(manifest_file, "w", encoding="utf-8") as f:
+                json.dump(self.history, f, indent=2)
 
-        logger.info(f"SUCCESS: Rendered deliverable -> {output_mp4}")
-        return output_mp4
+            generated_clips.append(output_mp4)
+            logger.info(f"SUCCESS: Rendered deliverable -> {output_mp4}")
+
+            # Clean temporary files for this window
+            for f in [clip_audio_wav, banner_png, ass_path]:
+                try:
+                    if os.path.exists(f):
+                        os.remove(f)
+                except Exception:
+                    pass
+
+        try:
+            if os.path.exists(raw_buffer):
+                os.remove(raw_buffer)
+        except Exception:
+            pass
+
+        return generated_clips
 
 
 def main():
     stream_url = "https://www.youtube.com/live/OIeLbmyraRQ"
     clipper = LiveStreamClipperDaemon(stream_url=stream_url)
 
-    # Process one continuous slice immediately
-    logger.info("Starting autonomous live stream analysis cycle...")
-    clip = clipper.process_one_cycle()
-    if clip:
-        logger.info(f"Cycle finished. Generated: {clip}")
-    else:
-        logger.warning("No clip generated this cycle.")
+    logger.info("Executing continuous live stream clipper cycle...")
+    new_clips = clipper.process_one_cycle()
+    logger.info(f"Cycle completed. Generated {len(new_clips)} new clips: {new_clips}")
 
 
 if __name__ == "__main__":
     main()
+
