@@ -136,40 +136,57 @@ class LiveStreamClipperDaemon:
         candidates = []
 
         # Content-specific hooks based on transcript
-        if any(w in text_lower for w in ["npc", "car", "drive", "ride", "bentley", "bike", "street"]):
+        if any(w in text_lower for w in ["car", "supercar", "drive", "speed", "fast", "bentley", "bike", "lamborghini", "ferrari"]):
+            candidates.append((
+                "heavy_stroke",
+                ["BRO FOUND THE FASTEST CAR", "IN GTA 6 \U0001F480"],
+                "BRO FOUND THE FASTEST CAR IN GTA 6 \U0001F480"
+            ))
+            candidates.append((
+                "tiktok_bubble",
+                ["Driving a 300 KM/H Supercar", "in GTA 6 \U0001F62D"],
+                "Driving a 300 KM/H Supercar in GTA 6 \U0001F62D"
+            ))
+            candidates.append((
+                "heavy_stroke",
+                ["FIRST SUPERCAR I FOUND", "IN GTA 6"],
+                "FIRST SUPERCAR I FOUND IN GTA 6"
+            ))
+            candidates.append((
+                "condensed_pov",
+                ["Pov: Driving At 300 KM/H In GTA 6."],
+                "Pov: Driving At 300 KM/H In GTA 6."
+            ))
+
+        if any(w in text_lower for w in ["map", "explore", "secret", "island", "city", "place", "location"]):
+            candidates.append((
+                "tiktok_bubble",
+                ["Exploring the secret map location", "in GTA 6 \U0001F62D"],
+                "Exploring the secret map location in GTA 6 \U0001F62D"
+            ))
+            candidates.append((
+                "heavy_stroke",
+                ["HIDDEN MAP LOCATION", "FOUND IN GTA 6 \U0001F480"],
+                "HIDDEN MAP LOCATION FOUND IN GTA 6 \U0001F480"
+            ))
+
+        if any(w in text_lower for w in ["npc", "people", "guy", "police", "cop"]):
             candidates.append((
                 "tiktok_bubble",
                 ["The NPCs are crazy", "in GTA 6 \U0001F62D"],
                 "The NPCs are crazy in GTA 6 \U0001F62D"
             ))
             candidates.append((
-                "heavy_stroke",
-                ["FIRST VEHICLE I FOUND", "IN GTA 6"],
-                "FIRST VEHICLE I FOUND IN GTA 6"
-            ))
-            candidates.append((
                 "tiktok_bubble",
-                ["NPC was NOT giving up", "their ride in GTA 6 \U0001F62D"],
-                "NPC was NOT giving up their ride in GTA 6 \U0001F62D"
+                ["NPC was NOT giving up that", "Bentley in GTA 6 \U0001F62D"],
+                "NPC was NOT giving up that Bentley in GTA 6 \U0001F62D"
             ))
 
-        if any(w in text_lower for w in ["weapon", "gun", "shoot", "kill", "alligator", "chameleon"]):
+        if any(w in text_lower for w in ["water", "crash", "stunt", "jump", "fall", "fly"]):
             candidates.append((
                 "heavy_stroke",
-                ["BRO USED A CHAMELEON", "AS A WEAPON \U0001F480"],
-                "BRO USED A CHAMELEON AS A WEAPON \U0001F480"
-            ))
-            candidates.append((
-                "heavy_stroke",
-                ["LUCIA'S MOM GOT BIT", "BY AN ALLIGATOR"],
-                "LUCIA'S MOM GOT BIT BY AN ALLIGATOR"
-            ))
-
-        if any(w in text_lower for w in ["baby", "lucia", "kid", "born", "family"]):
-            candidates.append((
-                "minimal_white",
-                ["GTA VI LUCIA'S BABY \U0001F633\U0001F62D"],
-                "GTA VI LUCIA'S BABY \U0001F633\U0001F62D"
+                ["BRO ACCIDENTALLY JUMPED", "INTO THE WATER \U0001F480"],
+                "BRO ACCIDENTALLY JUMPED INTO THE WATER \U0001F480"
             ))
 
         # Diverse general presets from user's screenshots
@@ -230,6 +247,74 @@ class LiveStreamClipperDaemon:
         # Fallback with clip ID
         suffix = f"part {clip_id}"
         return "tiktok_bubble", [f"Speed in GTA 6 {suffix}", "watch till the end \U0001F62D"], f"Speed in GTA 6 {suffix} watch till the end \U0001F62D"
+
+    def detect_top_action_windows(self, video_path: str, max_windows: int = 2) -> List[Tuple[float, float, float]]:
+        """Detects top non-overlapping action/surprise windows based on audio RMS energy."""
+        wav_path = os.path.join(self.temp_dir, "temp_live_audio.wav")
+        subprocess.run([
+            FFMPEG, "-y",
+            "-i", video_path,
+            "-vn", "-ar", "16000", "-ac", "1",
+            wav_path
+        ], capture_output=True)
+
+        if not os.path.exists(wav_path) or os.path.getsize(wav_path) < 1000:
+            return [(0.0, float(self.clip_target_duration_sec), 0.0)]
+
+        with wave.open(wav_path, "rb") as wf:
+            n_frames = wf.getnframes()
+            sample_rate = wf.getframerate()
+            duration = n_frames / sample_rate
+            raw_data = wf.readframes(n_frames)
+
+        chunk_size = int(sample_rate * 0.5)
+        samples = struct.unpack(f"<{n_frames}h", raw_data)
+
+        rms_scores = []
+        for i in range(0, n_frames, chunk_size):
+            chunk = samples[i : i + chunk_size]
+            if not chunk:
+                continue
+            rms = math.sqrt(sum(s * s for s in chunk) / len(chunk))
+            sec = i / sample_rate
+            rms_scores.append((sec, rms))
+
+        if not rms_scores:
+            return [(0.0, min(self.clip_target_duration_sec, duration), 0.0)]
+
+        window_chunks = int(self.clip_target_duration_sec / 0.5)
+        all_candidates = []
+
+        for i in range(len(rms_scores) - window_chunks + 1):
+            win_sum = sum(rms_scores[j][1] for j in range(i, i + window_chunks))
+            start_sec = rms_scores[i][0]
+            end_sec = min(duration, start_sec + self.clip_target_duration_sec)
+            peak_sec = max(rms_scores[i : i + window_chunks], key=lambda x: x[1])[0]
+            all_candidates.append((win_sum, start_sec, end_sec, peak_sec))
+
+        # Sort by energy descending
+        all_candidates.sort(key=lambda x: x[0], reverse=True)
+
+        selected_windows = []
+        for cand in all_candidates:
+            c_start = cand[1]
+            c_end = cand[2]
+            c_peak = cand[3]
+
+            # Ensure at least 15s separation from previously selected windows
+            overlap = any(abs(c_start - sw[0]) < 20.0 for sw in selected_windows)
+            if not overlap:
+                selected_windows.append((c_start, c_end, c_peak))
+                if len(selected_windows) >= max_windows:
+                    break
+
+        try:
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+        except Exception:
+            pass
+
+        return selected_windows
 
     def render_screenshot_style_banner(
         self,
@@ -503,15 +588,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 clip_audio_wav
             ], capture_output=True)
 
-            # Transcribe
-            t_res = self.transcriber.transcribe(clip_audio_wav, language="en")
+            # Transcribe (auto-detect language for Hindi/Hinglish and English commentary)
+            t_res = self.transcriber.transcribe(clip_audio_wav, language=None)
             words = [{"word": w.word, "start": w.start, "end": w.end} for seg in t_res.segments for w in (seg.words or [])]
             logger.info(f"Transcribed {len(words)} words: '{t_res.full_text[:80]}...'")
 
             # Generate unique clip filename
             clip_id = len(self.history) + 1
             timestamp_str = datetime.now().strftime("%H%M%S")
-            clip_filename = f"speed_action_clip_{clip_id}_{timestamp_str}.mp4"
+            clip_filename = f"viral_clip_{clip_id}_{timestamp_str}.mp4"
             output_mp4 = os.path.join(self.output_dir, clip_filename)
 
             # Generate 100% English unique viral hook banner matching user reference screenshots
@@ -572,10 +657,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 
 def main():
-    stream_url = "https://www.youtube.com/live/OIeLbmyraRQ"
-    clipper = LiveStreamClipperDaemon(stream_url=stream_url)
+    import argparse
+    parser = argparse.ArgumentParser(description="Autonomous Live Stream Clipper")
+    parser.add_argument("--url", default="https://www.youtube.com/live/jSZK6H7AgBI", help="Live stream URL to monitor and clip")
+    parser.add_argument("--max-cycles", type=int, default=1, help="Number of clipping cycles to run")
+    args = parser.parse_args()
 
-    logger.info("Executing continuous live stream clipper cycle...")
+    clipper = LiveStreamClipperDaemon(stream_url=args.url)
+
+    logger.info(f"Executing continuous live stream clipper on: {args.url}")
     new_clips = clipper.process_one_cycle()
     logger.info(f"Cycle completed. Generated {len(new_clips)} new clips: {new_clips}")
 
