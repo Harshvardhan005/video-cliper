@@ -173,3 +173,4 @@ class WatermarkManager:
         img.save(output_png_path)
         logger.info(f"Rendered watermark badge overlay to {output_png_path}")
         return output_png_path
+

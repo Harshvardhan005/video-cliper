@@ -1,34 +1,30 @@
-<<<<<<< HEAD
 # 🎬 AutoClip AI: Autonomous AI Video Clipping Pipeline
 
 > **Production-Grade Autonomous Short-Form Video Studio (9:16) for YouTube Shorts, Instagram Reels, and TikTok.**
 
-AutoClip AI accepts virtually any long-form video source (YouTube URLs, direct streaming links, local MP4/MOV/MKV/WebM files, gaming footage, podcasts, and interviews), intelligently detects high-retention viral moments, reframes landscape footage into 1080×1920 vertical format, burns in animated captions with dynamic word-level highlights, masters audio loudness, generates high-CTR thumbnails, crafts social media metadata, and verifies quality automatically.
+AutoClip AI accepts virtually any long-form video source (YouTube URLs, direct live streams, local MP4/MOV/MKV/WebM files, gaming footage, podcasts, and interviews), intelligently detects high-retention viral moments, reframes landscape footage into 1080×1920 vertical format, burns in animated captions with dynamic word-level highlights, masters audio loudness, embeds customizable creator watermarks (`@BallQ_FC`), generates high-CTR thumbnails, crafts social media metadata, and verifies quality automatically.
 
 ---
 
 ## ⚡ Features & Capabilities
 
-- **Universal Media Ingestion**: Automatic ingestion from local files or web URLs using `yt-dlp` and `FFmpeg`.
-- **Speech Recognition & Alignment**: Dual-engine Whisper (`whisper.cpp` native C++ GPU/CPU engine with fast CTranslate2/faster-whisper support) providing millisecond-accurate word timestamps.
-- **Autonomous Viral Moment Detection**:
-  - **Hook Detector**: Identifies question hooks, truth revelations, pattern interrupts, and curiosity dialogue in the first 3–5 seconds.
-  - **Semantic Understanding**: NLP density analysis detecting emotional peaks, actionable insights, controversies, and Q&A pairs.
-  - **Multi-Signal Retention Scoring**: 0–100 weighted score combining Hook Strength (25%), Emotional Engagement (20%), Information Value (20%), Narrative Completeness (15%), Visual Activity (10%), and Audio Quality (10%).
+- **Universal Media Ingestion**: Direct ingestion from local video files or web URLs using `yt-dlp` and `FFmpeg`.
+- **Autonomous Livestream Monitoring**: Continuously monitors active YouTube livestreams, captures rolling buffers, detects peak surprise & action spikes, and renders shorts in real-time.
+- **Speech Recognition & Alignment**: Dual-engine Whisper with millisecond-accurate word timestamps and automatic language identification.
+- **Hinglish Transliteration Engine**: Pure-Python rule-based and colloquial dictionary engine that seamlessly converts Devanagari/Hindi speech to Romanized Hinglish for high-engagement viral captions.
+- **Aesthetic Viral Title Presets**:
+  - **TikTok / Instagram Sticker Pill**: White rounded card with dark text and optional emoji (`border-radius: 24px`).
+  - **Heavy White Stroke**: Bold white lettering with a 6px solid black outline for maximum readability over fast gameplay.
+  - **Condensed POV**: Compact white condensed font with a clean black stroke.
+  - **Minimalist Modern White**: Sleek white typography with subtle drop-shadow.
+- **Creator Watermark Engine**: Automatically applies creator branding (default: `@BallQ_FC`) across all exported clips via synchronized ASS subtitle events and transparent PNG overlays.
 - **Intelligent 9:16 Video Reframing**:
-  - **Smart Face Crop**: Subject detection and camera motion smoothing (Exponential Moving Average) to follow active speakers.
   - **Blurred-Background Layout**: Aesthetic full-bleed blurred backdrop with centered 16:9 foreground for presentations, gaming, and screen recordings.
+  - **Smart Face Crop**: Subject detection and camera motion smoothing (Exponential Moving Average) to follow active speakers.
   - **Split-Screen Layout**: Multi-speaker / podcast format.
-- **Animated Captions & Styling Presets**:
-  - **Alex Hormozi Style**: High-energy uppercase bold captions with dynamic yellow/gold active word highlights.
-  - **Clean Minimalist**: Modern sans-serif with subtle contrast.
-  - **Podcast / Interview**: Balanced dialogue subtitle placement.
-  - **Gaming Neon**: High-octane magenta/cyan styling.
-  - **Cinematic**: Elegant serif subtitle pacing.
-- **Audio Mastering**: Broadcast-standard EBU R128 loudness normalization (`-14 LUFS`), peak limiting, and noise cleanup.
-- **High-CTR Thumbnail Generation**: Automatic keyframe selection based on sharpness/contrast with bold headline typography and viral badges.
-- **Platform-Specific Metadata**: Titles, summaries, keyword tags, and optimized hashtag bundles tailored for YouTube Shorts, Instagram Reels, and TikTok.
-- **Automated Quality Control (QC)**: Automated verification of duration, 1080×1920 resolution, 9:16 aspect ratio, audio presence, and dark/black frame detection.
+- **Animated Captions & Styling**: Word-by-word synchronized karaoke captions with active yellow highlights (`&H0000FFFF&`).
+- **Broadcast Audio Mastering**: EBU R128 loudness normalization (`-14 LUFS`), peak limiting, and noise cleanup.
+- **Automated Quality Control (QC)**: Verifies 1080×1920 geometry, 9:16 aspect ratio, duration constraints, audio sync, and black/corrupted frames.
 - **Dual Interface**:
   - **CLI**: Direct terminal automation for batch jobs and headless servers.
   - **Web Dashboard Studio**: Real-time dark-themed web dashboard with live SSE progress, video player, and one-click ZIP packaging.
@@ -45,7 +41,7 @@ video clipper/
 │   └── ffprobe.exe
 │
 ├── config/                       # Pipeline configuration & presets
-│   ├── settings.yaml             # Core resolution, hardware, and audio settings
+│   ├── settings.yaml             # Core resolution, hardware, branding, and audio settings
 │   └── presets.yaml              # Subtitle typography & color styling presets
 │
 ├── models/                       # Local AI model weights
@@ -57,6 +53,8 @@ video clipper/
 │   ├── media_inspector.py        # FFprobe metadata extraction
 │   ├── ingestion.py              # yt-dlp & audio normalizer
 │   ├── transcription.py          # Native GPU Whisper.cpp engine
+│   ├── transliteration.py        # Devanagari to Hinglish transliterator
+│   ├── watermark.py              # Creator watermark & branding manager
 │   ├── semantic_analyzer.py      # Linguistic & context scoring
 │   ├── hook_detector.py          # 3-5s opening hook evaluator
 │   ├── retention_scorer.py       # Multi-signal 0-100 score engine
@@ -66,6 +64,7 @@ video clipper/
 │   ├── caption_generator.py      # ASS animated subtitle engine
 │   ├── audio_processor.py        # EBU R128 loudness mastering
 │   ├── video_editor.py           # FFmpeg compositing & NVENC encoder
+│   ├── live_stream_monitor.py    # Autonomous rolling live stream clipper
 │   ├── thumbnail_generator.py    # 1080x1920 thumbnail designer
 │   ├── metadata_generator.py     # Social media copywriter
 │   ├── quality_control.py        # Automated export QC checks
@@ -82,152 +81,18 @@ video clipper/
 │   ├── captions/                 # Synchronized .ass files
 │   └── metadata/                 # Platform JSON metadata
 │
-├── temp/                         # Temporary audio/video buffers
-├── logs/                         # Execution logs
+├── final_clips/                  # Autonomous live stream deliverables
 ├── tests/
-│   └── test_pipeline.py          # Automated synthetic test suite
+│   ├── test_pipeline.py          # Automated synthetic test suite
+│   └── test_watermark.py         # Watermark engine unit tests
 │
 ├── main.py                       # Application entry point & CLI
 ├── requirements.txt              # Dependency specifications
-=======
-🎬 AI Universal Video Clipper
-
-Turn Long Videos into Viral Shorts Automatically!
-
-An AI-powered video clipping pipeline that transforms long-form content into engaging **9:16 vertical videos** ready for YouTube Shorts, Instagram Reels, and TikTok.
-
-Upload a video or paste a supported video URL. The system analyzes the content, identifies the most engaging moments, automatically edits them, and generates professional short-form videos with synchronized karaoke captions.
-
----
-
-✨ Features
-
-- 🤖 AI-Powered Clip Detection – Automatically identifies interesting, funny, emotional, and engaging moments.
-- 🎯 Smart Moment Selection – Finds high-retention moments using transcription, semantic analysis, and audio/visual signals.
-- 🎮 Gaming Video Support – Intelligent gameplay framing and optional facecam layouts.
-- 🎙️ **Podcast & Interview Support** – Speaker-focused cropping and stacked layouts.
-- 📱 **Automatic 9:16 Conversion** – Converts landscape videos into vertical Shorts and Reels.
-- 🗣️ **Karaoke Captions** – Word-by-word animated captions with automatic language detection.
-- 👁️ **Face Tracking** – Keeps speakers and important subjects visible.
-- 🎨 **Smart Video Editing** – Dynamic zooms, jump cuts, transitions, and audio enhancement.
-- 🖼️ **Thumbnail Generation** – Automatically extracts engaging frames for thumbnails.
-- 📝 **AI Metadata Generation** – Generates titles, descriptions, and niche-specific hashtags.
-- ⚡ **GPU Acceleration** – Uses supported hardware acceleration with CPU fallback.
-- 📦 **Batch Processing** – Generate multiple clips from a single long-form video.
-
----
-
-## 🔄 How It Works
-
-```text
-      LONG-FORM VIDEO
-             │
-             ▼
-      VIDEO INGESTION
-             │
-             ▼
-      AUDIO EXTRACTION
-             │
-             ▼
-       AI TRANSCRIPTION
-             │
-             ▼
-     SEMANTIC ANALYSIS
-             │
-             ▼
-      VIRAL MOMENT
-        DETECTION
-             │
-             ▼
-      CLIP SELECTION
-             │
-             ▼
-     SMART 9:16 CROPPING
-             │
-             ▼
-      KARAOKE CAPTIONS
-             │
-             ▼
-      VIDEO ENHANCEMENT
-             │
-             ▼
-    THUMBNAILS & METADATA
-             │
-             ▼
-       QUALITY CONTROL
-             │
-             ▼
-       FINAL SHORTS
-```
-
----
-
-## 🛠️ Tech Stack
-
-| Technology | Purpose |
-|---|---|
-| Python | Core automation and processing |
-| FFmpeg | Video editing, encoding, and rendering |
-| Faster-Whisper | AI speech recognition |
-| OpenCV | Face detection and tracking |
-| yt-dlp | Video downloading |
-| PySceneDetect | Scene detection |
-| FastAPI | Backend API |
-| HTML, CSS, JavaScript | Dashboard interface |
-| PyTorch | AI model execution |
-
----
-
-## 📂 Project Structure
-
-```text
-AI-Universal-Video-Clipper/
-│
-├── config/
-│   ├── settings.yaml
-│   └── presets.yaml
-│
-├── models/
-│
-├── src/
-│   ├── ingestion.py
-│   ├── transcription.py
-│   ├── semantic_analyzer.py
-│   ├── hook_detector.py
-│   ├── retention_scorer.py
-│   ├── clip_selector.py
-│   ├── face_tracker.py
-│   ├── smart_crop.py
-│   ├── caption_generator.py
-│   ├── video_editor.py
-│   ├── thumbnail_generator.py
-│   ├── metadata_generator.py
-│   ├── quality_control.py
-│   └── pipeline.py
-│
-├── dashboard/
-├── input/
-├── output/
-│   ├── clips/
-│   ├── thumbnails/
-│   ├── captions/
-│   └── metadata/
-│
-├── temp_work/
-├── logs/
-├── tests/
-│
-├── main.py
-├── requirements.txt
-├── .env.example
-├── .gitignore
->>>>>>> origin/main
 └── README.md
 ```
 
 ---
 
-<<<<<<< HEAD
 ## 🚀 Quickstart Guide
 
 ### 1. Requirements
@@ -235,254 +100,82 @@ AI-Universal-Video-Clipper/
 - **Python**: 3.10+
 - **Hardware Acceleration**: NVIDIA GPU with CUDA/NVENC support (automatically used when detected; seamless CPU fallback if unavailable).
 
-### 2. Launch the Web Studio Dashboard
-
-To launch the local web interface:
-
-```powershell
-.\venv\python.exe main.py server --host 127.0.0.1 --port 8000
-```
-
-Open your browser to:
-👉 **`http://127.0.0.1:8000`**
-
-From the dashboard:
-1. Paste a video URL (e.g. YouTube) or select a local video file (`.mp4`, `.mov`, `.mkv`).
-2. Choose your preferred **Caption Style** (`Alex Hormozi`, `Clean Minimalist`, `Podcast`, `Gaming Neon`, `Cinematic`).
-3. Select your target **Clip Duration** (`short: 15-30s`, `medium: 30-45s`, `long: 45-60s`).
-4. Select **Layout Mode** (`Smart Face Crop`, `Blurred Letterbox`, `Split Screen`).
-5. Click **Run Autonomous Pipeline** and watch real-time processing and preview/download generated clips.
-
----
-
-### 3. CLI Command-Line Usage
-
-Process any video directly from the terminal:
-
-```powershell
-# Process a local video
-.\venv\python.exe main.py process -i "path/to/video.mp4" -d medium -n 5 -p hormozi
-
-# Process a YouTube video directly
-.\venv\python.exe main.py process -i "https://www.youtube.com/watch?v=..." -d short -n 3 -p minimal
-
-# Display environment & hardware diagnostics
-.\venv\python.exe main.py info
-```
-
-#### CLI Options:
-| Flag | Description | Default |
-|---|---|---|
-| `--input`, `-i` | Video file path or URL | *Required* |
-| `--duration`, `-d` | Target clip duration (`short`, `medium`, `long`, `extended`) | `medium` |
-| `--preset`, `-p` | Caption style preset (`hormozi`, `minimal`, `podcast`, `gaming`, `cinematic`) | `hormozi` |
-| `--max-clips`, `-n` | Maximum number of clips to produce | `5` |
-| `--layout`, `-l` | Layout mode (`smart_auto`, `face_crop`, `blurred_bg`, `split_screen`) | `smart_auto` |
-| `--model-size` | Whisper model (`tiny`, `base`, `small`, `medium`) | `tiny` |
-| `--device` | Execution device (`auto`, `cuda`, `cpu`) | `auto` |
-
----
-
-## 🧪 Automated Testing
-
-Run the automated test suite verifying media ingestion, FFmpeg encoding, hook detection, caption synchronization, vertical reframing, and quality verification:
-
-```powershell
-.\venv\python.exe tests\test_pipeline.py
-```
-
----
-
-## 🛡 Quality Control & Verification
-
-Every generated clip passes an automated multi-point inspection before delivery:
-- **File Integrity**: Verifies non-empty file write.
-- **Resolution**: Strict verification of `1080 × 1920` vertical canvas.
-- **Aspect Ratio**: Mathematical validation of `9:16` geometry.
-- **Audio Integrity**: Confirms valid audio stream, loudness compliance, and synchronization.
-- **Black Frame Check**: Samples frames across the video to detect accidental black/corrupted sequences.
-
-=======
-## ⚙️ Installation
-
-### 1. Clone the Repository
+### 2. Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/AI-Universal-Video-Clipper.git
+# Clone the repository
+git clone https://github.com/Harshvardhan005/video-cliper.git
+cd video-cliper
 
-cd AI-Universal-Video-Clipper
-```
-
-### 2. Create a Virtual Environment
-
-**Windows:**
-
-```bash
+# Create and activate virtual environment
 python -m venv venv
-venv\Scripts\activate
-```
+venv\Scripts\activate       # On Windows
+# source venv/bin/activate  # On macOS/Linux
 
-**Linux / macOS:**
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3. Install Dependencies
-
-```bash
-python -m pip install --upgrade pip
-
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 4. Install FFmpeg
+### 3. Running the CLI Pipeline
 
-Make sure FFmpeg and FFprobe are installed and available in your system PATH.
-
-Verify:
+Process any video file or URL into 3 viral vertical clips:
 
 ```bash
-ffmpeg -version
-ffprobe -version
+python main.py process "https://www.youtube.com/watch?v=VIDEO_ID" --clips 3 --layout smart_auto --burn-captions
 ```
 
-### 5. Run the Application
+Process a local file:
 
 ```bash
-python main.py
+python main.py process input/podcast_interview.mp4 --clips 3 --burn-captions
 ```
 
-Follow the startup instructions displayed by the application.
+### 4. Running the Autonomous Livestream Clipper
 
----
+To autonomously monitor a live stream, detect action/surprise peaks, and render vertical shorts continuously:
 
-## 🎥 Usage
-
-1. Open the local dashboard.
-2. Upload a video or paste a supported video URL.
-3. Select the number of clips.
-4. Choose your preferred caption style.
-5. Let the AI analyze the video.
-6. Review the selected moments.
-7. Generate and export your vertical videos.
-
-### Default Processing Configuration
-
-| Setting | Value |
-|---|---|
-| Number of clips | 3 |
-| Clip duration | 25–55 seconds |
-| Aspect ratio | 9:16 |
-| Resolution | 1080 × 1920 |
-| Frame rate | 60 FPS |
-| Video format | MP4 |
-| Video codec | H.264 |
-| Audio codec | AAC |
-| Caption style | Word-by-word karaoke |
-
----
-
-## 📁 Output
-
-Generated clips are stored inside:
-
-```text
-final_clips/
-│
-├── clip_1.mp4
-├── clip_2.mp4
-└── clip_3.mp4
+```bash
+python src/live_stream_monitor.py
 ```
 
-Each clip can include:
+### 5. Launching the Web Studio Dashboard
 
-- Original video timestamps.
-- Automatically generated captions.
-- Suggested viral title.
-- Relevant hashtags.
-- Thumbnail.
-- Clip summary.
+```bash
+python main.py serve --port 8000
+```
+Then open `http://localhost:8000` in your web browser.
 
 ---
 
-## 🚀 Supported Content Types
+## 🏷️ Creator Watermark Configuration
 
-| Content | Framing Mode |
-|---|---|
-| Gaming Streams | Gameplay + Facecam |
-| Podcasts | Speaker-Focused |
-| Interviews | Split / Stacked |
-| Challenges | Full-Screen Crop |
-| Vlogs | Dynamic Tracking |
-| Tech Videos | Full-Screen / Smart Crop |
-| Educational Videos | Speaker-Focused |
+Configure creator branding inside `config/settings.yaml`:
 
----
-
-## 💻 Hardware Requirements
-
-**Minimum:**
-- Python 3.10+
-- 8 GB RAM
-- Modern multi-core CPU
-- FFmpeg
-- Sufficient storage for temporary video processing
-
-**Recommended:**
-- 16 GB+ RAM
-- NVIDIA GPU with compatible CUDA support
-- SSD storage
-- Modern multi-core processor
-
-CPU processing is supported when GPU acceleration is unavailable.
+```yaml
+branding:
+  watermark: "@BallQ_FC"
+  enabled: true
+  opacity: 0.85
+  font_size: 34
+  position: "center_below_video"  # Options: center_below_video, center_above_video, top_right, bottom_right
+```
 
 ---
 
-## 🔮 Future Improvements
+## 🧪 Testing
 
-- [ ] Fully autonomous web dashboard.
-- [ ] Advanced AI viral moment detection.
-- [ ] Improved speaker diarization.
-- [ ] Multi-speaker face tracking.
-- [ ] Custom caption templates.
-- [ ] Automatic thumbnail variations.
-- [ ] Batch URL processing.
-- [ ] Multiple social media export presets.
-- [ ] Cloud processing support.
-- [ ] AI-powered clip performance prediction.
+Run the automated test suites:
 
----
+```bash
+# Watermark unit tests
+python tests/test_watermark.py
 
-⚠️ Disclaimer
-
-This project is intended for legitimate video editing and content creation.
-
-Users are responsible for ensuring they have the necessary rights and permissions to download, process, and publish video content. Respect copyright laws and platform terms of service.
-
-AI-generated clip selections and retention scores are predictions, not guarantees of viral performance.
+# End-to-end pipeline integration tests
+python tests/test_pipeline.py
+```
 
 ---
 
-🤝 Contributing
+## 📜 License
 
-Contributions, bug reports, feature requests, and improvements are welcome!
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Commit your changes.
-4. Open a Pull Request.
-
----
-
-📜 License
-
-Choose an appropriate open-source license before distributing this project. See the `LICENSE` file for details.
-
----
-
-**Built with ❤️ using Python, AI, and FFmpeg.**
-
-*Long videos in. Engaging shorts out.*
->>>>>>> origin/main
+MIT License. Built for autonomous video production and short-form content engineering.
