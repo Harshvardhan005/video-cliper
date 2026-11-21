@@ -5,6 +5,14 @@ app:
   version: "1.0.0"
   env: "development"
 
+branding:
+  watermark: "@BallQ_FC"
+  enabled: true
+  opacity: 0.85
+  font_size: 34
+  position: "center_below_video"  # "center_below_video", "center_above_video", "top_right", "bottom_right"
+
+
 hardware:
   device: "auto"              # "auto", "cuda", "cpu"
   fallback_to_cpu: true

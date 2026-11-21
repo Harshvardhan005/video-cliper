@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 import yaml
 from src.transcription import WordSegment
 from src.transliteration import to_hinglish, transliterate_word, is_devanagari
+from src.watermark import WatermarkManager
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class CaptionGenerator:
 
     def __init__(self, presets_path: str = "config/presets.yaml"):
         self.presets = self._load_presets(presets_path)
+        self.watermark_mgr = WatermarkManager()
 
     @staticmethod
     def _load_presets(presets_path: str) -> Dict:
@@ -122,6 +124,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 end_str = self._format_ass_time(w_end)
 
                 events.append(f"Dialogue: 0,{start_str},{end_str},Default,,0,0,0,,{dialogue_text}")
+
+        # Inject creator watermark if configured
+        wm_style, wm_event = self.watermark_mgr.get_ass_style_and_event(clip_duration=3600.0)
+        if wm_style:
+            header = header.replace("[Events]", f"{wm_style}\n\n[Events]")
+            events.insert(0, wm_event)
 
         with open(output_ass_path, "w", encoding="utf-8") as f:
             f.write(header + "\n".join(events) + "\n")

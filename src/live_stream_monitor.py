@@ -25,6 +25,7 @@ from src.media_inspector import MediaInspector
 from src.quality_control import QualityControl
 from src.transcription import Transcriber
 from src.transliteration import to_hinglish, transliterate_word, is_devanagari
+from src.watermark import WatermarkManager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,6 +69,7 @@ class LiveStreamClipperDaemon:
         self.inspector = MediaInspector(FFPROBE)
         self.qc = QualityControl(inspector=self.inspector, ffmpeg_path=FFMPEG)
         self.transcriber = Transcriber(model_size="tiny", device="cpu", compute_type="int8")
+        self.watermark_mgr = WatermarkManager()
         self.history = self._load_history()
 
     def _load_history(self) -> List[Dict]:
@@ -409,6 +411,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
                 dialogue_text = " ".join(line_parts)
                 events.append(f"Dialogue: 0,{sec_to_ass(w_start)},{sec_to_ass(w_end)},Default,,0,0,0,,{dialogue_text}")
+
+        # Inject creator watermark
+        wm_style, wm_event = self.watermark_mgr.get_ass_style_and_event(clip_duration=3600.0)
+        if wm_style:
+            header = header.replace("[Events]", f"{wm_style}\n\n[Events]")
+            events.insert(0, wm_event)
 
         with open(ass_path, "w", encoding="utf-8") as f:
             f.write(header + "\n".join(events) + "\n")

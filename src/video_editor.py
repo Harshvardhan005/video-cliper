@@ -12,6 +12,7 @@ from typing import Callable, Optional
 from src.audio_processor import AudioProcessor
 from src.media_inspector import MediaInspector
 from src.smart_crop import SmartCropper
+from src.watermark import WatermarkManager
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class VideoEditor:
         self.smart_cropper = smart_cropper or SmartCropper()
         self.audio_processor = audio_processor or AudioProcessor(ffmpeg_path=self.ffmpeg_path)
         self.inspector = MediaInspector()
+        self.watermark_mgr = WatermarkManager()
         self.nvenc_available = self._test_nvenc()
 
     @staticmethod
@@ -87,13 +89,34 @@ class VideoEditor:
             layout_mode=layout_mode
         )
 
-        # 2. Append ASS subtitle burning filter if requested
+        # 2. Append ASS subtitle burning filter & watermark
         video_filters = [crop_filter]
+        temp_wm_ass = None
         if burn_captions and ass_caption_path and os.path.isfile(ass_caption_path):
-            # Format path for FFmpeg filter parser (escape colons and use forward slashes)
+            self.watermark_mgr.inject_into_ass_file(ass_caption_path, clip_duration=duration)
             escaped_ass = os.path.abspath(ass_caption_path).replace("\\", "/").replace(":", "\\:")
-            # Use ass filter (or subtitles filter)
             video_filters.append(f"ass='{escaped_ass}'")
+        elif self.watermark_mgr.enabled and self.watermark_mgr.text:
+            temp_wm_ass = os.path.join(os.path.dirname(output_clip_path), "temp_wm.ass")
+            wm_style, wm_event = self.watermark_mgr.get_ass_style_and_event(clip_duration=duration)
+            wm_content = f"""[Script Info]
+Title: Watermark
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+{wm_style}
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+{wm_event}
+"""
+            with open(temp_wm_ass, "w", encoding="utf-8") as f:
+                f.write(wm_content)
+            escaped_wm = os.path.abspath(temp_wm_ass).replace("\\", "/").replace(":", "\\:")
+            video_filters.append(f"ass='{escaped_wm}'")
 
         full_vf = ",".join(video_filters)
 
@@ -136,6 +159,12 @@ class VideoEditor:
             res_fb = subprocess.run(cmd, capture_output=True, text=True)
             if res_fb.returncode != 0:
                 raise RuntimeError(f"FFmpeg render failure: {res_fb.stderr}")
+
+        if temp_wm_ass and os.path.exists(temp_wm_ass):
+            try:
+                os.remove(temp_wm_ass)
+            except Exception:
+                pass
 
         if progress_callback:
             progress_callback("Video clip rendered successfully.", 1.0)
