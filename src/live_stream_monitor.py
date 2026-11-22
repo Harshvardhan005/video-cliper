@@ -723,16 +723,20 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ass_path: str,
         output_mp4: str
     ) -> bool:
-        """Renders 1080x1920 60fps vertical short with NVENC hardware encoding."""
+        """
+        Renders 1080x1920 60fps vertical short with NVENC hardware encoding.
+        Uses sample-accurate output seeking (-i ... -ss ... -t ...) and resets PTS
+        so that the video never freezes at the start and audio never cuts out prematurely.
+        """
         escaped_ass = os.path.abspath(ass_path).replace("\\", "/").replace(":", "\\:")
         filter_complex = (
-            f"[0:v]split=2[bg][fg];"
+            f"[0:v]setpts=PTS-STARTPTS,split=2[bg][fg];"
             f"[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5,eq=brightness=-0.15[blurred];"
             f"[fg]scale=1080:608:flags=lanczos[sharp_fg];"
             f"[blurred][sharp_fg]overlay=0:656[with_fg];"
             f"[with_fg][1:v]overlay=0:150,fps=60,ass='{escaped_ass}'"
         )
-        af = "loudnorm=I=-14:LRA=7:tp=-1.5,alimiter=limit=-1.0dB:attack=5:release=50"
+        af = "asetpts=PTS-STARTPTS,loudnorm=I=-14:LRA=7:tp=-1.5,alimiter=limit=-1.0dB:attack=5:release=50"
 
         cmd = [
             FFMPEG, "-y",
@@ -792,9 +796,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             candidate_audio = os.path.join(self.temp_dir, f"candidate_audio_{window_idx}.wav")
             subprocess.run([
                 FFMPEG, "-y",
+                "-i", raw_buffer,
                 "-ss", str(pre_start),
                 "-t", str(search_dur),
-                "-i", raw_buffer,
                 "-ar", "16000", "-ac", "1",
                 candidate_audio
             ], capture_output=True)
