@@ -573,16 +573,26 @@ class LiveStreamClipperDaemon:
                     draw.text((curr_x, ty + 2), text_part, font=f, fill=(255, 255, 255, 255), embedded_color=True)
                 curr_x += w
 
+        COLOR_YELLOW = (255, 230, 0, 255)
+        COLOR_WHITE = (255, 255, 255, 255)
+
+        # Ensure multi-line yellow & white title structure
+        if len(lines) == 1:
+            words_in_line = lines[0].split()
+            if len(words_in_line) >= 2:
+                mid = len(words_in_line) // 2
+                lines = [" ".join(words_in_line[:mid]), " ".join(words_in_line[mid:])]
+
         if style_type == "tiktok_bubble":
-            font_size = 46
+            font_size = 48
             font_text = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
             emoji_font = ImageFont.truetype(emoji_font_path, font_size)
 
-            line_spacing = 58
+            line_spacing = 62
             total_text_h = len(lines) * line_spacing
 
             max_line_w = max(measure_line_width(l, font_text, emoji_font) for l in lines)
-            pad_x = 42
+            pad_x = 44
             pad_y = 28
             pill_w = int(max_line_w + (pad_x * 2))
             pill_h = total_text_h + (pad_y * 2) - 10
@@ -592,17 +602,18 @@ class LiveStreamClipperDaemon:
 
             draw.rounded_rectangle(
                 [pill_x, pill_y, pill_x + pill_w, pill_y + pill_h],
-                radius=24,
-                fill=(255, 255, 255, 250),
-                outline=(0, 0, 0, 35),
-                width=2
+                radius=26,
+                fill=(15, 15, 20, 240),
+                outline=(255, 230, 0, 160),
+                width=3
             )
 
             for idx, l in enumerate(lines):
                 lw = measure_line_width(l, font_text, emoji_font)
                 tx = (width - lw) // 2
                 ty = pill_y + pad_y + (idx * line_spacing)
-                draw_segmented_line(tx, ty, l, font_text, emoji_font, text_fill=(12, 12, 12, 255))
+                fill_color = COLOR_YELLOW if idx % 2 == 0 else COLOR_WHITE
+                draw_segmented_line(tx, ty, l, font_text, emoji_font, text_fill=fill_color)
 
         elif style_type == "heavy_stroke":
             font_size = 62
@@ -617,7 +628,8 @@ class LiveStreamClipperDaemon:
                 lw = measure_line_width(l, font_heavy, emoji_font)
                 tx = (width - lw) // 2
                 ty = start_y + (idx * line_spacing)
-                draw_segmented_line(tx, ty, l, font_heavy, emoji_font, text_fill=(255, 255, 255, 255), stroke_w=6, stroke_fill=(0, 0, 0, 255))
+                fill_color = COLOR_YELLOW if idx % 2 == 0 else COLOR_WHITE
+                draw_segmented_line(tx, ty, l, font_heavy, emoji_font, text_fill=fill_color, stroke_w=6, stroke_fill=(0, 0, 0, 255))
 
         elif style_type == "condensed_pov":
             font_size = 56
@@ -632,7 +644,8 @@ class LiveStreamClipperDaemon:
                 lw = measure_line_width(l, font_cond, emoji_font)
                 tx = (width - lw) // 2
                 ty = start_y + (idx * line_spacing)
-                draw_segmented_line(tx, ty, l, font_cond, emoji_font, text_fill=(255, 255, 255, 255), stroke_w=4, stroke_fill=(0, 0, 0, 255))
+                fill_color = COLOR_YELLOW if idx % 2 == 0 else COLOR_WHITE
+                draw_segmented_line(tx, ty, l, font_cond, emoji_font, text_fill=fill_color, stroke_w=4, stroke_fill=(0, 0, 0, 255))
 
         else:
             font_size = 54
@@ -648,13 +661,14 @@ class LiveStreamClipperDaemon:
                 lw = measure_line_width(l, font_clean, emoji_font)
                 tx = (width - lw) // 2
                 ty = start_y + (idx * line_spacing)
-                draw_segmented_line(tx, ty, l, font_clean, emoji_font, text_fill=(255, 255, 255, 255), shadow_offsets=shadow_offsets, stroke_fill=(0, 0, 0, 220))
+                fill_color = COLOR_YELLOW if idx % 2 == 0 else COLOR_WHITE
+                draw_segmented_line(tx, ty, l, font_clean, emoji_font, text_fill=fill_color, shadow_offsets=shadow_offsets, stroke_fill=(0, 0, 0, 240))
 
         img.save(output_png_path)
         return output_png_path
 
-    def generate_dialogue_ass(self, words: List[Dict], ass_path: str) -> str:
-        """Generates synchronized ASS subtitles with yellow active-word highlights and @BallQ_FC watermark."""
+    def generate_dialogue_ass(self, words: List[Dict], ass_path: str, include_dialogue: bool = False) -> str:
+        """Generates synchronized ASS subtitles with @BallQ_FC watermark (dialogue captions can be toggled)."""
         header = """[Script Info]
 Title: Live Stream Dialogue Captions
 ScriptType: v4.00+
@@ -670,39 +684,40 @@ Style: Default,Arial,54,&H00FFFFFF,&H000000FF,&H00050505,&H80000000,-1,0,0,0,100
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
         events = []
-        clean_words = []
-        for w in words:
-            clean_text = w["word"].strip()
-            if re.search(r"\(.*music.*\)|\(gunshot\)|\[MUSIC|PLAYING\]", clean_text, re.I):
-                continue
-            if is_devanagari(clean_text):
-                clean_text = transliterate_word(clean_text)
-            clean_words.append({
-                "word": clean_text,
-                "start": w["start"],
-                "end": w["end"]
-            })
+        if include_dialogue and words:
+            clean_words = []
+            for w in words:
+                clean_text = w["word"].strip()
+                if re.search(r"\(.*music.*\)|\(gunshot\)|\[MUSIC|PLAYING\]", clean_text, re.I):
+                    continue
+                if is_devanagari(clean_text):
+                    clean_text = transliterate_word(clean_text)
+                clean_words.append({
+                    "word": clean_text,
+                    "start": w["start"],
+                    "end": w["end"]
+                })
 
-        words_per_group = 3
-        for i in range(0, len(clean_words), words_per_group):
-            chunk = clean_words[i : i + words_per_group]
-            if not chunk:
-                continue
+            words_per_group = 3
+            for i in range(0, len(clean_words), words_per_group):
+                chunk = clean_words[i : i + words_per_group]
+                if not chunk:
+                    continue
 
-            for active_idx, active_word in enumerate(chunk):
-                w_start = active_word["start"]
-                w_end = active_word["end"]
+                for active_idx, active_word in enumerate(chunk):
+                    w_start = active_word["start"]
+                    w_end = active_word["end"]
 
-                line_parts = []
-                for idx, cw in enumerate(chunk):
-                    word_str = cw["word"]
-                    if idx == active_idx:
-                        line_parts.append(f"{{\\c&H0000FFFF&\\fscx108\\fscy108}}{word_str}{{\\c&H00FFFFFF&\\fscx100\\fscy100}}")
-                    else:
-                        line_parts.append(word_str)
+                    line_parts = []
+                    for idx, cw in enumerate(chunk):
+                        word_str = cw["word"]
+                        if idx == active_idx:
+                            line_parts.append(f"{{\\c&H0000FFFF&\\fscx108\\fscy108}}{word_str}{{\\c&H00FFFFFF&\\fscx100\\fscy100}}")
+                        else:
+                            line_parts.append(word_str)
 
-                dialogue_text = " ".join(line_parts)
-                events.append(f"Dialogue: 0,{sec_to_ass(w_start)},{sec_to_ass(w_end)},Default,,0,0,0,,{dialogue_text}")
+                    dialogue_text = " ".join(line_parts)
+                    events.append(f"Dialogue: 0,{sec_to_ass(w_start)},{sec_to_ass(w_end)},Default,,0,0,0,,{dialogue_text}")
 
         # Inject creator watermark (@BallQ_FC)
         wm_style, wm_event = self.watermark_mgr.get_ass_style_and_event(clip_duration=3600.0)
@@ -839,9 +854,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             banner_png = os.path.join(self.temp_dir, f"hook_{clip_id}.png")
             self.render_screenshot_style_banner(style_type, lines, banner_png)
 
-            # Generate ASS dialogue captions with @BallQ_FC watermark
+            # Generate watermark ASS without dialogue captions (captions paused as requested)
             ass_path = os.path.join(self.temp_dir, f"captions_{clip_id}.ass")
-            self.generate_dialogue_ass(snapped_words, ass_path)
+            self.generate_dialogue_ass(snapped_words, ass_path, include_dialogue=False)
 
             # Render vertical clip
             success = self.render_vertical_clip(raw_buffer, snapped_start, clip_duration, banner_png, ass_path, output_mp4)
