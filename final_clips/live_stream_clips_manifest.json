@@ -212,8 +212,8 @@
     "filename": "viral_clip_20_101048.mp4",
     "title": "\"SO YES, ANY WAY I'VE STARTED\" \ud83d\udc80",
     "created_at": "2026-11-22T10:14:29.670472",
-    "duration": 35.5,
-    "file_size_mb": 10.8,
+    "duration": 40.73,
+    "file_size_mb": 11.46,
     "transcription_snippet": "So yes, any way I've started. . -So, you write, no, I had such a bad boy. -So, you write? -You write. -You write. I'll b",
     "stream_url": "https://www.youtube.com/live/jSZK6H7AgBI",
     "qc_valid": true
@@ -227,6 +227,28 @@
     "file_size_mb": 9.8,
     "transcription_snippet": "- I am not a sinner. - I am not a sinner. - I am not a sinner. - I am not a sinner. of ndonthi bhaad cheme nakood ni bou",
     "stream_url": "https://www.youtube.com/live/jSZK6H7AgBI",
+    "qc_valid": true
+  },
+  {
+    "clip_id": 22,
+    "filename": "viral_clip_22_211023.mp4",
+    "title": "\"Anything else or no\" \ud83d\ude2d",
+    "created_at": "2026-11-22T21:12:16.945046",
+    "duration": 34.8,
+    "file_size_mb": 5.82,
+    "transcription_snippet": "Anything else or no? Anything else or no? Bye! help me. Alright, that's bad. Ich bin bei uns. I shall you a picture on a",
+    "stream_url": "https://www.youtube.com/live/9ZfAuSnayd4",
+    "qc_valid": true
+  },
+  {
+    "clip_id": 23,
+    "filename": "viral_clip_23_211237.mp4",
+    "title": "\"DANN BIN ICH EIN SECOND\" \ud83d\udc80",
+    "created_at": "2026-11-22T21:16:30.388046",
+    "duration": 36.3,
+    "file_size_mb": 5.94,
+    "transcription_snippet": "Dann bin ich ein second. Ich schau' ihr, Pics. on a second? Oh, my fucking God. No See you next time! If you could see r",
+    "stream_url": "https://www.youtube.com/live/9ZfAuSnayd4",
     "qc_valid": true
   }
 ]

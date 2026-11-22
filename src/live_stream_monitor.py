@@ -901,8 +901,15 @@ def main():
     clipper = LiveStreamClipperDaemon(stream_url=args.url)
 
     logger.info(f"Executing continuous live stream clipper on: {args.url}")
-    new_clips = clipper.process_one_cycle()
-    logger.info(f"Cycle completed. Generated {len(new_clips)} new clips: {new_clips}")
+    cycle = 0
+    while cycle < args.max_cycles or args.max_cycles == 0:
+        cycle += 1
+        logger.info(f"--- Starting Clipping Cycle {cycle} ---")
+        new_clips = clipper.process_one_cycle()
+        logger.info(f"Cycle {cycle} completed. Generated {len(new_clips)} new clips: {new_clips}")
+        if args.max_cycles > 0 and cycle >= args.max_cycles:
+            break
+        time.sleep(5)
 
 
 if __name__ == "__main__":
