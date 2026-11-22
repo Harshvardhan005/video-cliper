@@ -42,6 +42,37 @@ FFPROBE = os.path.abspath("bin/ffprobe.exe")
 PYTHON_EXE = os.path.abspath("venv/Scripts/python.exe") if os.path.exists("venv/Scripts/python.exe") else sys.executable
 
 
+def is_emoji(char: str) -> bool:
+    code = ord(char)
+    return (
+        0x1F300 <= code <= 0x1FAFF or
+        0x2600 <= code <= 0x27BF or
+        0xFE00 <= code <= 0xFE0F or
+        0x1F900 <= code <= 0x1F9FF or
+        0x1F600 <= code <= 0x1F64F or
+        0x1F680 <= code <= 0x1F6FF or
+        0x2300 <= code <= 0x23FF
+    )
+
+
+def split_text_and_emojis(text: str) -> List[Tuple[str, bool]]:
+    tokens = []
+    current_str = ''
+    is_curr_emoji = False
+    for char in text:
+        emoji_char = is_emoji(char)
+        if emoji_char == is_curr_emoji:
+            current_str += char
+        else:
+            if current_str:
+                tokens.append((current_str, is_curr_emoji))
+            current_str = char
+            is_curr_emoji = emoji_char
+    if current_str:
+        tokens.append((current_str, is_curr_emoji))
+    return tokens
+
+
 def sec_to_ass(seconds: float) -> str:
     seconds = max(0.0, seconds)
     centis = int(round((seconds - int(seconds)) * 100))
@@ -492,32 +523,68 @@ class LiveStreamClipperDaemon:
         height: int = 360
     ) -> str:
         """
-        Renders titles exactly matching the user's reference screenshots:
+        Renders titles exactly matching the user's reference screenshots with full emoji fallback:
         1. 'tiktok_bubble': White rounded rectangle card with dark text (Screenshots 3 & 6)
         2. 'heavy_stroke': Heavy white bold font with 6px thick solid black outline (Screenshots 1, 5, 7)
         3. 'condensed_pov': Condensed white font with thin black stroke (Screenshot 4)
         4. 'minimal_white': Crisp white modern bold font (Screenshots 2 & 8)
+        Emojis are rendered via Segoe UI Emoji with embedded color so no '▯' missing glyph boxes appear.
         """
         img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
+        emoji_font_path = "C:/Windows/Fonts/seguiemj.ttf"
+
+        def measure_line_width(line_text: str, main_f: ImageFont.FreeTypeFont, emoji_f: ImageFont.FreeTypeFont) -> float:
+            tokens = split_text_and_emojis(line_text)
+            total_w = 0.0
+            for text_part, is_em in tokens:
+                f = emoji_f if is_em else main_f
+                total_w += draw.textlength(text_part, font=f)
+            return total_w
+
+        def draw_segmented_line(
+            tx: float,
+            ty: float,
+            line_text: str,
+            main_f: ImageFont.FreeTypeFont,
+            emoji_f: ImageFont.FreeTypeFont,
+            text_fill: tuple,
+            stroke_w: int = 0,
+            stroke_fill: tuple = (0, 0, 0, 255),
+            shadow_offsets: Optional[List[Tuple[int, int]]] = None
+        ):
+            tokens = split_text_and_emojis(line_text)
+            curr_x = tx
+            for text_part, is_em in tokens:
+                f = emoji_f if is_em else main_f
+                w = draw.textlength(text_part, font=f)
+                if not is_em:
+                    if shadow_offsets:
+                        for dx, dy in shadow_offsets:
+                            draw.text((curr_x + dx, ty + dy), text_part, font=f, fill=stroke_fill)
+                    elif stroke_w > 0:
+                        for dx in range(-stroke_w, stroke_w + 1):
+                            for dy in range(-stroke_w, stroke_w + 1):
+                                if dx * dx + dy * dy <= stroke_w * stroke_w:
+                                    draw.text((curr_x + dx, ty + dy), text_part, font=f, fill=stroke_fill)
+                    draw.text((curr_x, ty), text_part, font=f, fill=text_fill)
+                else:
+                    # Windows Segoe UI Emoji with embedded color
+                    draw.text((curr_x, ty + 2), text_part, font=f, fill=(255, 255, 255, 255), embedded_color=True)
+                curr_x += w
 
         if style_type == "tiktok_bubble":
             font_size = 46
             font_text = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
+            emoji_font = ImageFont.truetype(emoji_font_path, font_size)
 
             line_spacing = 58
             total_text_h = len(lines) * line_spacing
 
-            max_line_w = 0
-            for l in lines:
-                bbox = draw.textbbox((0, 0), l, font=font_text)
-                lw = bbox[2] - bbox[0]
-                if lw > max_line_w:
-                    max_line_w = lw
-
+            max_line_w = max(measure_line_width(l, font_text, emoji_font) for l in lines)
             pad_x = 42
             pad_y = 28
-            pill_w = max_line_w + (pad_x * 2)
+            pill_w = int(max_line_w + (pad_x * 2))
             pill_h = total_text_h + (pad_y * 2) - 10
 
             pill_x = (width - pill_w) // 2
@@ -532,73 +599,56 @@ class LiveStreamClipperDaemon:
             )
 
             for idx, l in enumerate(lines):
-                bbox = draw.textbbox((0, 0), l, font=font_text)
-                lw = bbox[2] - bbox[0]
+                lw = measure_line_width(l, font_text, emoji_font)
                 tx = (width - lw) // 2
                 ty = pill_y + pad_y + (idx * line_spacing)
-                draw.text((tx, ty), l, font=font_text, fill=(12, 12, 12, 255), embedded_color=True)
+                draw_segmented_line(tx, ty, l, font_text, emoji_font, text_fill=(12, 12, 12, 255))
 
         elif style_type == "heavy_stroke":
             font_size = 62
             font_heavy = ImageFont.truetype("C:/Windows/Fonts/seguibl.ttf", font_size)
+            emoji_font = ImageFont.truetype(emoji_font_path, 54)
 
             line_spacing = 76
             total_text_h = len(lines) * line_spacing
             start_y = (height - total_text_h) // 2
 
-            stroke_w = 6
             for idx, l in enumerate(lines):
-                bbox = draw.textbbox((0, 0), l, font=font_heavy)
-                lw = bbox[2] - bbox[0]
+                lw = measure_line_width(l, font_heavy, emoji_font)
                 tx = (width - lw) // 2
                 ty = start_y + (idx * line_spacing)
-
-                for dx in range(-stroke_w, stroke_w + 1):
-                    for dy in range(-stroke_w, stroke_w + 1):
-                        if dx * dx + dy * dy <= stroke_w * stroke_w:
-                            draw.text((tx + dx, ty + dy), l, font=font_heavy, fill=(0, 0, 0, 255))
-
-                draw.text((tx, ty), l, font=font_heavy, fill=(255, 255, 255, 255), embedded_color=True)
+                draw_segmented_line(tx, ty, l, font_heavy, emoji_font, text_fill=(255, 255, 255, 255), stroke_w=6, stroke_fill=(0, 0, 0, 255))
 
         elif style_type == "condensed_pov":
             font_size = 56
             font_cond = ImageFont.truetype("C:/Windows/Fonts/impact.ttf", font_size)
+            emoji_font = ImageFont.truetype(emoji_font_path, 50)
 
             line_spacing = 68
             total_text_h = len(lines) * line_spacing
             start_y = (height - total_text_h) // 2
 
-            stroke_w = 4
             for idx, l in enumerate(lines):
-                bbox = draw.textbbox((0, 0), l, font=font_cond)
-                lw = bbox[2] - bbox[0]
+                lw = measure_line_width(l, font_cond, emoji_font)
                 tx = (width - lw) // 2
                 ty = start_y + (idx * line_spacing)
-
-                for dx in range(-stroke_w, stroke_w + 1):
-                    for dy in range(-stroke_w, stroke_w + 1):
-                        if dx * dx + dy * dy <= stroke_w * stroke_w:
-                            draw.text((tx + dx, ty + dy), l, font=font_cond, fill=(0, 0, 0, 255))
-
-                draw.text((tx, ty), l, font=font_cond, fill=(255, 255, 255, 255), embedded_color=True)
+                draw_segmented_line(tx, ty, l, font_cond, emoji_font, text_fill=(255, 255, 255, 255), stroke_w=4, stroke_fill=(0, 0, 0, 255))
 
         else:
             font_size = 54
             font_clean = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
+            emoji_font = ImageFont.truetype(emoji_font_path, 48)
 
             line_spacing = 66
             total_text_h = len(lines) * line_spacing
             start_y = (height - total_text_h) // 2
 
+            shadow_offsets = [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)]
             for idx, l in enumerate(lines):
-                bbox = draw.textbbox((0, 0), l, font=font_clean)
-                lw = bbox[2] - bbox[0]
+                lw = measure_line_width(l, font_clean, emoji_font)
                 tx = (width - lw) // 2
                 ty = start_y + (idx * line_spacing)
-
-                for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)]:
-                    draw.text((tx + dx, ty + dy), l, font=font_clean, fill=(0, 0, 0, 220))
-                draw.text((tx, ty), l, font=font_clean, fill=(255, 255, 255, 255), embedded_color=True)
+                draw_segmented_line(tx, ty, l, font_clean, emoji_font, text_fill=(255, 255, 255, 255), shadow_offsets=shadow_offsets, stroke_fill=(0, 0, 0, 220))
 
         img.save(output_png_path)
         return output_png_path
