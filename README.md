@@ -132,11 +132,22 @@ python main.py process input/podcast_interview.mp4 --clips 3 --burn-captions
 
 ### 4. Running the Autonomous Livestream Clipper
 
-To autonomously monitor a live stream, detect action/surprise peaks, and render vertical shorts continuously:
+To autonomously monitor a live stream, detect action/surprise peaks via multi-signal energy and transient analysis, and render vertical shorts continuously:
 
 ```bash
-python src/live_stream_monitor.py
+# Monitor a specific YouTube livestream continuously
+python src/live_stream_monitor.py --url "https://www.youtube.com/live/VIDEO_ID" --max-cycles 0
+
+# Run a single batch cycle
+python src/live_stream_monitor.py --url "https://www.youtube.com/live/VIDEO_ID" --max-cycles 1
 ```
+
+**Key Livestream Clipper Capabilities**:
+- **Lossless Rolling Buffer Ingestion**: Captures rolling streams via MPEG-TS container with sample-accurate timestamp resets (`setpts=PTS-STARTPTS`, `asetpts=PTS-STARTPTS`) to prevent initial frozen video frames and ending audio cut-offs.
+- **Two-Tone Title Palette**: High-contrast Yellow (`#FFE600`) & White (`#FFFFFF`) with thick black outlines and auto-fit margin scaling.
+- **Full Emoji Fallback**: Uses `Segoe UI Emoji` with Pillow's `embedded_color=True` to render full-color emojis cleanly with no missing glyph boxes (`▯`).
+- **Watermark Integration**: Automatically burns `@BallQ_FC` creator watermark below the gameplay frame.
+- **105+ Production Clips Cataloged**: Full historical metadata and QC logs stored in `final_clips/live_stream_clips_manifest.json`.
 
 ### 5. Launching the Web Studio Dashboard
 
