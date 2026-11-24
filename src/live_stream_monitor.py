@@ -18,6 +18,7 @@ import struct
 import subprocess
 import sys
 import time
+import unicodedata
 import wave
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -44,14 +45,15 @@ PYTHON_EXE = os.path.abspath("venv/Scripts/python.exe") if os.path.exists("venv/
 
 def is_emoji(char: str) -> bool:
     code = ord(char)
+    cat = unicodedata.category(char)
     return (
-        0x1F300 <= code <= 0x1FAFF or
+        0x1F000 <= code <= 0x1FFFF or
         0x2600 <= code <= 0x27BF or
+        0x2B50 <= code <= 0x2B55 or
+        0x2300 <= code <= 0x23FF or
+        code == 0x200D or
         0xFE00 <= code <= 0xFE0F or
-        0x1F900 <= code <= 0x1F9FF or
-        0x1F600 <= code <= 0x1F64F or
-        0x1F680 <= code <= 0x1F6FF or
-        0x2300 <= code <= 0x23FF
+        cat in ("So", "Sk")
     )
 
 
@@ -616,11 +618,15 @@ class LiveStreamClipperDaemon:
                 draw_segmented_line(tx, ty, l, font_text, emoji_font, text_fill=fill_color)
 
         elif style_type == "heavy_stroke":
-            font_size = 62
-            font_heavy = ImageFont.truetype("C:/Windows/Fonts/seguibl.ttf", font_size)
-            emoji_font = ImageFont.truetype(emoji_font_path, 54)
+            font_size = 58
+            while font_size > 34:
+                font_heavy = ImageFont.truetype("C:/Windows/Fonts/seguibl.ttf", font_size)
+                emoji_font = ImageFont.truetype(emoji_font_path, int(font_size * 0.88))
+                if max(measure_line_width(l, font_heavy, emoji_font) for l in lines) <= width - 90:
+                    break
+                font_size -= 4
 
-            line_spacing = 76
+            line_spacing = int(font_size * 1.25)
             total_text_h = len(lines) * line_spacing
             start_y = (height - total_text_h) // 2
 
@@ -633,10 +639,14 @@ class LiveStreamClipperDaemon:
 
         elif style_type == "condensed_pov":
             font_size = 56
-            font_cond = ImageFont.truetype("C:/Windows/Fonts/impact.ttf", font_size)
-            emoji_font = ImageFont.truetype(emoji_font_path, 50)
+            while font_size > 34:
+                font_cond = ImageFont.truetype("C:/Windows/Fonts/impact.ttf", font_size)
+                emoji_font = ImageFont.truetype(emoji_font_path, int(font_size * 0.9))
+                if max(measure_line_width(l, font_cond, emoji_font) for l in lines) <= width - 90:
+                    break
+                font_size -= 4
 
-            line_spacing = 68
+            line_spacing = int(font_size * 1.2)
             total_text_h = len(lines) * line_spacing
             start_y = (height - total_text_h) // 2
 
@@ -649,10 +659,14 @@ class LiveStreamClipperDaemon:
 
         else:
             font_size = 54
-            font_clean = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
-            emoji_font = ImageFont.truetype(emoji_font_path, 48)
+            while font_size > 34:
+                font_clean = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", font_size)
+                emoji_font = ImageFont.truetype(emoji_font_path, int(font_size * 0.88))
+                if max(measure_line_width(l, font_clean, emoji_font) for l in lines) <= width - 90:
+                    break
+                font_size -= 4
 
-            line_spacing = 66
+            line_spacing = int(font_size * 1.22)
             total_text_h = len(lines) * line_spacing
             start_y = (height - total_text_h) // 2
 
