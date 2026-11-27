@@ -125,8 +125,8 @@ class LiveStreamClipperDaemon:
 
     def get_hls_stream_urls(self) -> Tuple[Optional[str], Optional[str]]:
         """Retrieves direct video and audio HLS m3u8 URLs using yt-dlp."""
-        cmd_v = [PYTHON_EXE, "-m", "yt_dlp", "-g", "-f", "311", self.stream_url]
-        cmd_a = [PYTHON_EXE, "-m", "yt_dlp", "-g", "-f", "234", self.stream_url]
+        cmd_v = [PYTHON_EXE, "-m", "yt_dlp", "-g", "-f", "312/311/bestvideo[height<=1080]/bestvideo", self.stream_url]
+        cmd_a = [PYTHON_EXE, "-m", "yt_dlp", "-g", "-f", "234/bestaudio/best", self.stream_url]
 
         logger.info("Querying live HLS stream URLs...")
         res_v = subprocess.run(cmd_v, capture_output=True, text=True)
